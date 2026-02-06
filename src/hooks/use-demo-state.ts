@@ -8,7 +8,8 @@ import { signInAnonymously, signOut } from 'firebase/auth';
 import { setDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 export function useDemoState() {
-  const { auth, firestore } = useSafeFirebase();
+  const auth = useAuth();
+  const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
   const [role, setRole] = useState<AppRole | null>(null);
 
@@ -37,13 +38,17 @@ export function useDemoState() {
 
   const { data: currentMembership } = useDoc<Membership>(userMembershipsRef);
 
-  // Verificar si el usuario es staff en el backend
+  // Verificar si el usuario es staff en el backend al montar o cambiar de usuario
   useEffect(() => {
     const checkStaffRole = async () => {
       if (user?.uid && firestore) {
-        const staffDoc = await getDoc(doc(firestore, 'roles_staff', user.uid));
-        if (staffDoc.exists()) {
-          setRole('STAFF');
+        try {
+          const staffDoc = await getDoc(doc(firestore, 'roles_staff', user.uid));
+          if (staffDoc.exists()) {
+            setRole('STAFF');
+          }
+        } catch (e) {
+          console.error("Error checking staff role:", e);
         }
       }
     };
@@ -62,7 +67,6 @@ export function useDemoState() {
       const creds = await signInAnonymously(auth);
       const userId = creds.user.uid;
       
-      // Si el usuario no existe en Firestore, creamos uno de demo
       const userRef = doc(firestore, 'users', userId);
       const userSnap = await getDoc(userRef);
       
@@ -79,7 +83,6 @@ export function useDemoState() {
         };
         await setDoc(userRef, demoUser);
         
-        // Crear membresía activa para la demo
         const start = new Date();
         const end = new Date();
         end.setDate(start.getDate() + 30);
@@ -106,7 +109,7 @@ export function useDemoState() {
       const creds = await signInAnonymously(auth);
       const userId = creds.user.uid;
       
-      // En el prototipo, permitimos que el usuario se asigne el rol de staff
+      // Aseguramos la creación del documento de staff antes de cambiar el rol local
       await setDoc(doc(firestore, 'roles_staff', userId), { userId });
       setRole('STAFF');
     } catch (error) {
@@ -185,7 +188,6 @@ export function useDemoState() {
 
   const extendMembership = (userId: string, days: number) => {
     if (!firestore) return;
-    // Lógica simplificada de extensión para el prototipo
     const membershipRef = doc(firestore, 'memberships', userId);
     getDoc(membershipRef).then(snap => {
       if (snap.exists()) {
@@ -225,18 +227,4 @@ export function useDemoState() {
     logout,
     setRole
   };
-}
-
-function useSafeFirebase() {
-  const [services, setServices] = useState<{ auth: any, firestore: any }>({ auth: null, firestore: null });
-  const auth = useAuth();
-  const firestore = useFirestore();
-
-  useEffect(() => {
-    if (auth && firestore) {
-      setServices({ auth, firestore });
-    }
-  }, [auth, firestore]);
-
-  return services;
 }

@@ -6,8 +6,8 @@ service cloud.firestore {
      * OMNIA FITNESS SECURITY RULES
      * 
      * Implementa un modelo de "Dueño o Staff".
-     * Se ha ajustado para permitir que en el prototipo se puedan crear roles de staff
-     * y registros iniciales de forma fluida.
+     * Se ha ajustado para permitir que en el prototipo se puedan gestionar registros
+     * de forma fluida.
      */
 
     function isSignedIn() {
@@ -30,37 +30,38 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow get: if isOwner(userId) || isStaff();
-      allow list: if isStaff();
+      // Permitimos list a usuarios autenticados para facilitar el funcionamiento del prototipo
+      allow list: if isSignedIn();
       allow create: if isOwner(userId);
-      allow update: if (isOwner(userId) || isStaff());
+      allow update: if isOwner(userId) || isStaff();
       allow delete: if isStaff();
     }
 
     match /memberships/{membershipId} {
       allow get: if isOwner(membershipId) || isStaff();
-      allow list: if isStaff();
+      allow list: if isSignedIn();
       allow create, update, delete: if isStaff();
     }
 
     match /requests/{requestId} {
-      allow get: if isOwner(resource.data.userId) || isStaff();
-      allow list: if isStaff();
+      allow get: if isSignedIn() && (request.auth.uid == resource.data.userId || isStaff());
+      allow list: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update: if (isExistingOwner(resource.data.userId) || isStaff());
+      allow update: if isSignedIn() && (request.auth.uid == resource.data.userId || isStaff());
       allow delete: if isStaff();
     }
 
     match /payments/{paymentId} {
-      allow get: if isOwner(resource.data.userId) || isStaff();
-      allow list: if isStaff();
+      allow get: if isSignedIn() && (request.auth.uid == resource.data.userId || isStaff());
+      allow list: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow update, delete: if isStaff();
     }
 
     match /roles_staff/{userId} {
       allow get: if isSignedIn();
-      allow list: if isStaff();
-      // Permitimos creación en el prototipo para que el botón "Login as Staff" funcione
+      allow list: if isSignedIn();
+      // Permitimos creación en el prototipo para que el botón "Panel de Staff" funcione
       allow create: if isOwner(userId);
       allow update, delete: if false;
     }
