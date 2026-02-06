@@ -47,6 +47,8 @@ export function useDemoState() {
       phone: userData.phone || '',
       idCardUrl: userData.idCardUrl || 'https://picsum.photos/seed/newid/400/250',
       facialRegStatus: 'COMPLETED',
+      faceEnrollmentStatus: 'completed',
+      livenessStatus: 'ok',
       status: 'PENDING',
       payments: [],
       ...userData

@@ -1,14 +1,15 @@
 
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useDemoState } from '@/hooks/use-demo-state';
-import { Camera, ChevronLeft, CheckCircle2, User, Mail, Phone, Upload, Scan } from 'lucide-react';
+import { Camera, ChevronLeft, CheckCircle2, User, Mail, Phone, Upload, Scan, Sun, Target, Glasses, Check } from 'lucide-react';
 import Image from 'next/image';
 import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
 
 export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
   const { registerUser } = useDemoState();
@@ -20,6 +21,7 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
     idCardUrl: ''
   });
   const [isSimulating, setIsSimulating] = useState(false);
+  const [scanProgress, setScanProgress] = useState(0);
 
   const nextStep = () => setStep(step + 1);
   const prevStep = () => setStep(Math.max(1, step - 1));
@@ -39,6 +41,30 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
       setIsSimulating(false);
     }, 1000);
   };
+
+  const startFacialScan = () => {
+    setIsSimulating(true);
+    setScanProgress(0);
+  };
+
+  useEffect(() => {
+    if (isSimulating && step === 3) {
+      const interval = setInterval(() => {
+        setScanProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(interval);
+            setTimeout(() => {
+              setIsSimulating(false);
+              nextStep();
+            }, 500);
+            return 100;
+          }
+          return prev + 5;
+        });
+      }, 100);
+      return () => clearInterval(interval);
+    }
+  }, [isSimulating, step]);
 
   return (
     <div className="flex flex-col h-full bg-background overflow-y-auto">
@@ -172,37 +198,51 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300 h-full flex flex-col">
             <div>
               <h2 className="text-2xl font-bold mb-2">Registro Facial</h2>
-              <p className="text-muted-foreground text-sm">Alinea tu rostro dentro del óvalo para la verificación de vida (simulada).</p>
+              <p className="text-muted-foreground text-sm">Alinea tu rostro dentro del óvalo para la verificación.</p>
             </div>
             
-            <div className="flex-1 relative bg-black rounded-3xl overflow-hidden min-h-[350px]">
+            <div className="flex-1 relative bg-black rounded-3xl overflow-hidden min-h-[400px]">
               <Image 
                 src="https://picsum.photos/seed/facecam/400/600" 
                 alt="Camera Stream" 
                 fill 
-                className="object-cover opacity-60"
+                className="object-cover opacity-80"
               />
               <div className="facial-guide"></div>
               
+              {/* Checklist Overlay */}
+              <div className="absolute top-4 left-4 right-4 flex justify-between gap-2">
+                {[
+                  { icon: Sun, label: "Buena luz" },
+                  { icon: Target, label: "Centrado" },
+                  { icon: Glasses, label: "Sin lentes" }
+                ].map((item, idx) => (
+                  <div key={idx} className="bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-2 border border-white/20">
+                    <item.icon className="h-3 w-3 text-white" />
+                    <span className="text-[10px] text-white font-medium">{item.label}</span>
+                    <Check className="h-3 w-3 text-green-400" />
+                  </div>
+                ))}
+              </div>
+
               {isSimulating ? (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 text-white p-6 text-center animate-pulse">
-                  <Scan className="h-16 w-16 mb-4" />
-                  <p className="text-xl font-bold">Escaneando...</p>
-                  <p className="text-sm">Mantén el rostro quieto</p>
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 text-white p-6 text-center">
+                  <div className="w-48 space-y-4">
+                    <Scan className="h-16 w-16 mb-4 mx-auto animate-pulse text-primary" />
+                    <p className="text-xl font-bold">Analizando...</p>
+                    <div className="space-y-1">
+                      <Progress value={scanProgress} className="h-1.5 bg-white/20" />
+                      <p className="text-[10px] text-white/70">{scanProgress}% Completado</p>
+                    </div>
+                  </div>
                 </div>
               ) : (
-                <div className="absolute bottom-10 left-0 right-0 flex justify-center">
+                <div className="absolute bottom-10 left-0 right-0 flex flex-col items-center gap-6">
                    <Button 
                     variant="secondary" 
                     size="lg" 
                     className="rounded-full h-20 w-20 p-0 shadow-2xl border-4 border-white/20" 
-                    onClick={() => {
-                      setIsSimulating(true);
-                      setTimeout(() => {
-                        setIsSimulating(false);
-                        nextStep();
-                      }, 2500);
-                    }}
+                    onClick={startFacialScan}
                   >
                     <div className="h-16 w-16 rounded-full bg-white flex items-center justify-center">
                       <Camera className="h-8 w-8 text-primary" />
@@ -227,8 +267,13 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
               <p className="text-muted-foreground px-4">
                 Tu rostro ha sido capturado correctamente.
               </p>
-              <div className="mt-6 inline-block bg-green-50 text-green-700 px-4 py-2 rounded-full text-sm font-medium border border-green-200">
-                Verificación de vida: OK (Simulada)
+              <div className="mt-6 flex flex-col gap-2 items-center">
+                <div className="inline-block bg-green-50 text-green-700 px-4 py-2 rounded-full text-sm font-medium border border-green-200">
+                  Verificación de vida: OK (Simulada)
+                </div>
+                <div className="inline-block bg-blue-50 text-blue-700 px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border border-blue-100">
+                  Face Enrollment: COMPLETED
+                </div>
               </div>
             </div>
 

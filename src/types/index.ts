@@ -19,6 +19,8 @@ export interface UserProfile {
   phone: string;
   idCardUrl: string;
   facialRegStatus: 'COMPLETED' | 'PENDING';
+  faceEnrollmentStatus?: 'completed' | 'pending';
+  livenessStatus?: 'ok' | 'failed';
   status: UserStatus;
   rejectionReason?: string;
   membership?: Membership;
