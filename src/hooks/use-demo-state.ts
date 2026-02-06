@@ -89,11 +89,61 @@ export function useDemoState() {
 
   const toggleSubscription = (userId: string, activate: boolean) => {
     const updatedUsers = users.map(u => {
-      if (u.id === userId && u.membership) {
+      if (u.id === userId) {
+        const nextStatus = activate ? 'ACTIVE' : 'EXPIRED';
         return { 
           ...u, 
-          status: activate ? 'ACTIVE' : 'EXPIRED',
-          membership: { ...u.membership, status: activate ? 'ACTIVE' : 'EXPIRED' } 
+          status: nextStatus,
+          membership: u.membership ? { ...u.membership, status: nextStatus } : undefined
+        };
+      }
+      return u;
+    });
+    saveUsers(updatedUsers);
+  };
+
+  const extendMembership = (userId: string, days: number) => {
+    const updatedUsers = users.map(u => {
+      if (u.id === userId && u.membership) {
+        const currentEnd = new Date(u.membership.endDate);
+        currentEnd.setDate(currentEnd.getDate() + days);
+        return {
+          ...u,
+          status: 'ACTIVE' as UserStatus,
+          membership: {
+            ...u.membership,
+            endDate: currentEnd.toISOString().split('T')[0],
+            daysRemaining: u.membership.daysRemaining + days,
+            status: 'ACTIVE' as UserStatus
+          }
+        };
+      }
+      return u;
+    });
+    saveUsers(updatedUsers);
+  };
+
+  const changePlan = (userId: string, plan: MembershipPlan) => {
+    const updatedUsers = users.map(u => {
+      if (u.id === userId) {
+        const start = new Date();
+        const end = new Date();
+        let days = 30;
+        if (plan === 'Trimestral') days = 90;
+        if (plan === 'Anual') days = 365;
+        end.setDate(start.getDate() + days);
+        
+        return {
+          ...u,
+          status: 'ACTIVE' as UserStatus,
+          membership: {
+            id: Math.random().toString(),
+            plan,
+            startDate: start.toISOString().split('T')[0],
+            endDate: end.toISOString().split('T')[0],
+            daysRemaining: days,
+            status: 'ACTIVE' as UserStatus
+          }
         };
       }
       return u;
@@ -116,6 +166,8 @@ export function useDemoState() {
     registerUser,
     updateStatus,
     toggleSubscription,
+    extendMembership,
+    changePlan,
     logout,
     setRole
   };
