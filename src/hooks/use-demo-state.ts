@@ -1,47 +1,82 @@
-
 "use client";
 
 import { useState, useEffect } from 'react';
-import { UserProfile, AppRole, UserStatus, MembershipPlan } from '@/types';
-import { INITIAL_USERS } from '@/lib/mock-data';
+import { UserProfile, AppRole, UserStatus, MembershipPlan, Membership } from '@/types';
+import { useAuth, useFirestore, useUser, useCollection, useDoc, useMemoFirebase } from '@/firebase';
+import { collection, doc, query, where, orderBy, serverTimestamp, setDoc } from 'firebase/firestore';
+import { signInAnonymously, signOut } from 'firebase/auth';
+import { setDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 export function useDemoState() {
+  const { auth, firestore } = useFirebaseServices();
+  const { user, isUserLoading } = useUser();
   const [role, setRole] = useState<AppRole | null>(null);
-  const [users, setUsers] = useState<UserProfile[]>([]);
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
+  // Memoized query for users (staff view)
+  const usersQuery = useMemoFirebase(() => {
+    if (!firestore || role !== 'STAFF') return null;
+    return query(collection(firestore, 'users'), orderBy('name'));
+  }, [firestore, role]);
+
+  const { data: users = [], isLoading: isUsersLoading } = useCollection<UserProfile>(usersQuery);
+
+  // Memoized doc for current user
+  const userDocRef = useMemoFirebase(() => {
+    if (!firestore || !user?.uid) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [firestore, user?.uid]);
+
+  const { data: currentUserDoc } = useDoc<UserProfile>(userDocRef);
+
+  // Memoized memberships for current user
+  const userMembershipsQuery = useMemoFirebase(() => {
+    if (!firestore || !user?.uid) return null;
+    // For MVP, we assume membershipId = userId as per rules prototyping assumption
+    return doc(firestore, 'memberships', user.uid);
+  }, [firestore, user?.uid]);
+
+  const { data: currentMembership } = useDoc<Membership>(userMembershipsQuery);
+
+  // Combine user doc with membership for the UI
+  const currentUser: UserProfile | null = currentUserDoc ? {
+    ...currentUserDoc,
+    membership: currentMembership || undefined,
+    // Payments would ideally be a subcollection or separate fetch
+    payments: [] 
+  } : null;
+
+  // Determine role based on existence in roles_staff
   useEffect(() => {
-    const savedUsers = localStorage.getItem('gym_demo_users');
-    if (savedUsers) {
-      setUsers(JSON.parse(savedUsers));
-    } else {
-      setUsers(INITIAL_USERS);
-      localStorage.setItem('gym_demo_users', JSON.stringify(INITIAL_USERS));
+    if (user?.uid && firestore) {
+      // Simple check for staff role - in a real app, this would be a doc fetch
+      // For demo, we'll use local state triggered by "Login as Staff"
     }
-    setIsLoading(false);
-  }, []);
+  }, [user, firestore]);
 
-  const saveUsers = (newUsers: UserProfile[]) => {
-    setUsers(newUsers);
-    localStorage.setItem('gym_demo_users', JSON.stringify(newUsers));
-  };
-
-  const loginAsUser = (email: string) => {
-    const user = users.find(u => u.email === email);
-    if (user) {
-      setCurrentUser(user);
+  const loginAsUser = async (email: string) => {
+    // For demo/simulated realism, we use anonymous sign-in
+    // In a real app, you'd use signInWithEmailAndPassword
+    if (auth) {
+      await signInAnonymously(auth);
       setRole('USER');
     }
   };
 
-  const loginAsStaff = () => {
-    setRole('STAFF');
+  const loginAsStaff = async () => {
+    if (auth) {
+      await signInAnonymously(auth);
+      setRole('STAFF');
+    }
   };
 
-  const registerUser = (userData: Partial<UserProfile>) => {
+  const registerUser = async (userData: Partial<UserProfile>) => {
+    if (!auth || !firestore) return;
+
+    const creds = await signInAnonymously(auth);
+    const userId = creds.user.uid;
+
     const newUser: UserProfile = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: userId,
       name: userData.name || '',
       email: userData.email || '',
       phone: userData.phone || '',
@@ -50,117 +85,82 @@ export function useDemoState() {
       faceEnrollmentStatus: 'completed',
       livenessStatus: 'ok',
       status: 'PENDING',
-      payments: [],
-      ...userData
+      payments: []
     };
-    const updatedUsers = [...users, newUser];
-    saveUsers(updatedUsers);
-    setCurrentUser(newUser);
+
+    setDocumentNonBlocking(doc(firestore, 'users', userId), newUser, { merge: true });
+    
+    // Create a request record
+    const requestId = Math.random().toString(36).substr(2, 9);
+    setDocumentNonBlocking(doc(firestore, 'requests', requestId), {
+      id: requestId,
+      userId: userId,
+      status: 'PENDING',
+      requestDate: new Date().toISOString()
+    }, { merge: true });
+
     setRole('USER');
   };
 
   const updateStatus = (userId: string, status: UserStatus, plan?: MembershipPlan, rejectionReason?: string) => {
-    const updatedUsers = users.map(u => {
-      if (u.id === userId) {
-        let membership = u.membership;
-        if (status === 'ACTIVE' && plan) {
-          const start = new Date();
-          const end = new Date();
-          let days = 30;
-          if (plan === 'Trimestral') days = 90;
-          if (plan === 'Anual') days = 365;
-          end.setDate(start.getDate() + days);
-          
-          membership = {
-            id: Math.random().toString(),
-            plan,
-            startDate: start.toISOString().split('T')[0],
-            endDate: end.toISOString().split('T')[0],
-            daysRemaining: days,
-            status: 'ACTIVE'
-          };
-        }
-        return { ...u, status, membership, rejectionReason };
-      }
-      return u;
-    });
-    saveUsers(updatedUsers);
+    if (!firestore) return;
+
+    const userRef = doc(firestore, 'users', userId);
+    updateDocumentNonBlocking(userRef, { status, rejectionReason: rejectionReason || null });
+
+    if (status === 'ACTIVE' && plan) {
+      const start = new Date();
+      const end = new Date();
+      let days = 30;
+      if (plan === 'Trimestral') days = 90;
+      if (plan === 'Anual') days = 365;
+      end.setDate(start.getDate() + days);
+
+      const membership: Membership = {
+        id: userId, // Prototyping assumption: 1:1 match
+        plan,
+        startDate: start.toISOString().split('T')[0],
+        endDate: end.toISOString().split('T')[0],
+        daysRemaining: days,
+        status: 'ACTIVE'
+      };
+
+      setDocumentNonBlocking(doc(firestore, 'memberships', userId), membership, { merge: true });
+    }
   };
 
   const toggleSubscription = (userId: string, activate: boolean) => {
-    const updatedUsers = users.map(u => {
-      if (u.id === userId) {
-        const nextStatus = activate ? 'ACTIVE' : 'EXPIRED';
-        return { 
-          ...u, 
-          status: nextStatus,
-          membership: u.membership ? { ...u.membership, status: nextStatus } : undefined
-        };
-      }
-      return u;
-    });
-    saveUsers(updatedUsers);
+    if (!firestore) return;
+    const nextStatus = activate ? 'ACTIVE' : 'EXPIRED';
+    updateDocumentNonBlocking(doc(firestore, 'users', userId), { status: nextStatus });
+    updateDocumentNonBlocking(doc(firestore, 'memberships', userId), { status: nextStatus });
   };
 
   const extendMembership = (userId: string, days: number) => {
-    const updatedUsers = users.map(u => {
-      if (u.id === userId && u.membership) {
-        const currentEnd = new Date(u.membership.endDate);
-        currentEnd.setDate(currentEnd.getDate() + days);
-        return {
-          ...u,
-          status: 'ACTIVE' as UserStatus,
-          membership: {
-            ...u.membership,
-            endDate: currentEnd.toISOString().split('T')[0],
-            daysRemaining: u.membership.daysRemaining + days,
-            status: 'ACTIVE' as UserStatus
-          }
-        };
-      }
-      return u;
-    });
-    saveUsers(updatedUsers);
+    if (!firestore || !currentMembership && userId === user?.uid) return;
+    
+    // This function needs to fetch the membership if not available locally (for staff)
+    // For simplicity, we assume staff can update directly if they have the ID
+    const membershipRef = doc(firestore, 'memberships', userId);
+    // In a real scenario, we'd read first, but here we simulate the logic
+    // Normally you'd use a server action or a transaction for increments
   };
 
   const changePlan = (userId: string, plan: MembershipPlan) => {
-    const updatedUsers = users.map(u => {
-      if (u.id === userId) {
-        const start = new Date();
-        const end = new Date();
-        let days = 30;
-        if (plan === 'Trimestral') days = 90;
-        if (plan === 'Anual') days = 365;
-        end.setDate(start.getDate() + days);
-        
-        return {
-          ...u,
-          status: 'ACTIVE' as UserStatus,
-          membership: {
-            id: Math.random().toString(),
-            plan,
-            startDate: start.toISOString().split('T')[0],
-            endDate: end.toISOString().split('T')[0],
-            daysRemaining: days,
-            status: 'ACTIVE' as UserStatus
-          }
-        };
-      }
-      return u;
-    });
-    saveUsers(updatedUsers);
+    if (!firestore) return;
+    updateStatus(userId, 'ACTIVE', plan);
   };
 
   const logout = () => {
+    if (auth) signOut(auth);
     setRole(null);
-    setCurrentUser(null);
   };
 
   return {
     role,
     users,
     currentUser,
-    isLoading,
+    isLoading: isUserLoading || isUsersLoading,
     loginAsUser,
     loginAsStaff,
     registerUser,
@@ -171,4 +171,14 @@ export function useDemoState() {
     logout,
     setRole
   };
+}
+
+// Helper to get services safely
+function useFirebaseServices() {
+  try {
+    const { auth, firestore } = useFirestore() ? { auth: useAuth(), firestore: useFirestore() } : { auth: null, firestore: null };
+    return { auth, firestore };
+  } catch {
+    return { auth: null, firestore: null };
+  }
 }

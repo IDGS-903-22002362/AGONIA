@@ -1,4 +1,3 @@
-
 "use client";
 
 import { UserProfile } from '@/types';
@@ -7,14 +6,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
   LogOut, 
-  Calendar, 
   CreditCard, 
   Clock, 
   User as UserIcon, 
   CheckCircle, 
   AlertCircle, 
   History, 
-  ChevronRight,
   Info,
   AlertTriangle,
   Trophy
@@ -42,7 +39,6 @@ export default function UserDashboard({ user, onLogout }: { user: UserProfile, o
   const isExpired = user.status === 'EXPIRED' || (user.membership?.status === 'EXPIRED');
   const isRejected = user.status === 'REJECTED';
 
-  // Determinamos el paso actual para la línea de tiempo
   const getCurrentStep = () => {
     if (isRejected) return 4;
     if (isActive) return 5;
@@ -54,7 +50,6 @@ export default function UserDashboard({ user, onLogout }: { user: UserProfile, o
 
   return (
     <div className="flex flex-col h-full bg-background overflow-y-auto">
-      {/* Notifications / Banners */}
       {isRejected && (
         <div className="bg-destructive text-destructive-foreground p-4 flex items-center gap-3 animate-in slide-in-from-top duration-300">
           <AlertTriangle className="shrink-0" />
@@ -66,7 +61,7 @@ export default function UserDashboard({ user, onLogout }: { user: UserProfile, o
         </div>
       )}
 
-      {isActive && user.membership?.daysRemaining && user.membership.daysRemaining > 360 && (
+      {isActive && user.membership?.daysRemaining && user.membership.daysRemaining > 30 && (
         <div className="bg-green-600 text-white p-4 flex items-center gap-3 animate-in slide-in-from-top duration-300">
           <Trophy className="shrink-0" />
           <div className="flex-1">
@@ -76,7 +71,6 @@ export default function UserDashboard({ user, onLogout }: { user: UserProfile, o
         </div>
       )}
 
-      {/* App Bar */}
       <div className="p-4 bg-primary text-white flex items-center justify-between sticky top-0 z-10 shadow-md">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center border border-white/10">
@@ -93,8 +87,6 @@ export default function UserDashboard({ user, onLogout }: { user: UserProfile, o
       </div>
 
       <div className="p-4 space-y-6 pb-20">
-        
-        {/* Status Timeline */}
         <section className="space-y-4">
           <div className="flex items-center justify-between px-1">
             <h3 className="font-bold text-lg">Proceso de Ingreso</h3>
@@ -136,7 +128,6 @@ export default function UserDashboard({ user, onLogout }: { user: UserProfile, o
           </div>
         </section>
 
-        {/* Action Card */}
         <Card className="rounded-3xl border-none shadow-xl overflow-hidden bg-white">
           <CardContent className="p-6">
             {isPending ? (
@@ -201,10 +192,9 @@ export default function UserDashboard({ user, onLogout }: { user: UserProfile, o
           </CardContent>
         </Card>
 
-        {/* History / Info */}
         <div className="space-y-3">
           <h3 className="font-bold px-1">Tus Pagos Recientes</h3>
-          {user.payments.length > 0 ? (
+          {user.payments && user.payments.length > 0 ? (
             <div className="space-y-2">
               {user.payments.slice(0, 2).map((p) => (
                 <div key={p.id} className="bg-white p-4 rounded-2xl flex items-center justify-between shadow-sm border border-gray-100">

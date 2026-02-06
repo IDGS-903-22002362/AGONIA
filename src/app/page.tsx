@@ -1,18 +1,26 @@
-
 "use client";
 
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { useDemoState } from '@/hooks/use-demo-state';
-import { User, ShieldCheck, Dumbbell } from 'lucide-react';
+import { User, ShieldCheck, Dumbbell, Loader2 } from 'lucide-react';
 import UserDashboard from '@/components/UserDashboard';
 import StaffDashboard from '@/components/StaffDashboard';
 import RegisterFlow from '@/components/RegisterFlow';
 
 export default function Home() {
-  const { role, setRole, currentUser, users, loginAsUser, loginAsStaff, logout } = useDemoState();
+  const { role, currentUser, isLoading, loginAsUser, loginAsStaff, logout } = useDemoState();
   const [showRegister, setShowRegister] = useState(false);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="mt-4 text-muted-foreground">Cargando GymCentral...</p>
+      </div>
+    );
+  }
 
   if (showRegister) {
     return <RegisterFlow onCancel={() => setShowRegister(false)} />;
@@ -49,7 +57,7 @@ export default function Home() {
           <Button 
             variant="outline"
             className="h-16 text-lg justify-start px-6 rounded-2xl shadow-md bg-white" 
-            onClick={() => loginAsUser('juan@example.com')}
+            onClick={() => loginAsUser('demo@example.com')}
           >
             <User className="mr-4 h-6 w-6 text-primary" />
             Entrar como Usuario
@@ -67,7 +75,7 @@ export default function Home() {
       </Card>
 
       <div className="mt-12 text-xs text-muted-foreground italic">
-        * Entorno de Demostración - Datos Simulados
+        * Entorno Real con Firebase - Persistencia Activada
       </div>
     </div>
   );
