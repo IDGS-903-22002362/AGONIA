@@ -1,0 +1,29 @@
+
+{
+  "placeholderImages": [
+    {
+      "id": "app-logo",
+      "description": "Gym Central Logo",
+      "imageUrl": "https://picsum.photos/seed/gym-logo/200/200",
+      "imageHint": "gym logo"
+    },
+    {
+      "id": "hero-bg",
+      "description": "Gym interior background",
+      "imageUrl": "https://picsum.photos/seed/gym-bg/800/600",
+      "imageHint": "gym fitness"
+    },
+    {
+      "id": "id-card-placeholder",
+      "description": "Placeholder for ID card upload",
+      "imageUrl": "https://picsum.photos/seed/idcard/400/250",
+      "imageHint": "identity card"
+    },
+    {
+      "id": "facial-placeholder",
+      "description": "Facial registration camera view",
+      "imageUrl": "https://picsum.photos/seed/face/400/400",
+      "imageHint": "human face"
+    }
+  ]
+}
