@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from 'react';
@@ -94,14 +93,14 @@ export default function StaffDashboard({ onLogout }: { onLogout: () => void }) {
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden">
       {/* Staff Bar */}
-      <div className="p-4 bg-gray-900 text-white flex items-center justify-between sticky top-0 z-10">
+      <div className="p-4 bg-[#1e1e1e] text-white flex items-center justify-between sticky top-0 z-10">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-accent flex items-center justify-center">
+          <div className="h-10 w-10 rounded-full bg-[#bbd300] flex items-center justify-center text-[#1e1e1e]">
             <ShieldCheck size={20} />
           </div>
           <div>
-            <p className="text-xs opacity-80 font-bold uppercase tracking-wider">Staff Admin</p>
-            <p className="font-bold leading-none">GymCentral</p>
+            <p className="text-[10px] text-[#bbd300] font-bold uppercase tracking-widest">Staff Portal</p>
+            <p className="font-bold leading-none">OMNIA Fitness</p>
           </div>
         </div>
         <Button variant="ghost" size="icon" className="text-white hover:bg-white/10" onClick={onLogout}>
@@ -113,14 +112,14 @@ export default function StaffDashboard({ onLogout }: { onLogout: () => void }) {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <div className="bg-white border-b px-4 sticky top-0 z-10">
             <TabsList className="w-full grid grid-cols-3 bg-muted/50 mt-4 h-12 p-1 rounded-xl">
-              <TabsTrigger value="pending" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs">
+              <TabsTrigger value="pending" className="rounded-lg data-[state=active]:bg-[#1e1e1e] data-[state=active]:text-[#bbd300] data-[state=active]:shadow-sm text-xs">
                 Pendientes ({pendingUsers.length})
               </TabsTrigger>
-              <TabsTrigger value="active" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs">
+              <TabsTrigger value="active" className="rounded-lg data-[state=active]:bg-[#1e1e1e] data-[state=active]:text-[#bbd300] data-[state=active]:shadow-sm text-xs">
                 Activos ({activeMembers.length})
               </TabsTrigger>
-              <TabsTrigger value="expired" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm text-xs">
-                Vencidos/Otros
+              <TabsTrigger value="expired" className="rounded-lg data-[state=active]:bg-[#1e1e1e] data-[state=active]:text-[#bbd300] data-[state=active]:shadow-sm text-xs">
+                Vencidos
               </TabsTrigger>
             </TabsList>
             
@@ -146,7 +145,7 @@ export default function StaffDashboard({ onLogout }: { onLogout: () => void }) {
                 <div key={user.id} className="bg-white rounded-2xl p-4 shadow-sm border flex flex-col gap-4 animate-in fade-in slide-in-from-left-2">
                   <div className="flex items-start justify-between">
                     <div className="flex gap-3">
-                      <div className="h-12 w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-lg">
+                      <div className="h-12 w-12 rounded-xl bg-[#bbd300]/10 text-[#bbd300] flex items-center justify-center font-bold text-lg">
                         {user.name.charAt(0)}
                       </div>
                       <div>
@@ -157,7 +156,7 @@ export default function StaffDashboard({ onLogout }: { onLogout: () => void }) {
                         </div>
                       </div>
                     </div>
-                    <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200">
+                    <Badge variant="outline" className="bg-[#bbd300]/10 text-[#1e1e1e] border-[#bbd300]/30">
                       Nuevo
                     </Badge>
                   </div>
@@ -166,14 +165,14 @@ export default function StaffDashboard({ onLogout }: { onLogout: () => void }) {
                     <Button 
                       variant="outline" 
                       size="sm" 
-                      className="flex-1 rounded-lg border-blue-100 text-blue-600"
+                      className="flex-1 rounded-lg border-gray-200 text-[#1e1e1e]"
                       onClick={() => setSelectedUser(user)}
                     >
                       <Info size={16} className="mr-2" /> Detalles
                     </Button>
                     <Button 
                       size="sm" 
-                      className="flex-1 rounded-lg bg-green-600 hover:bg-green-700"
+                      className="flex-1 rounded-lg bg-[#bbd300] text-[#1e1e1e] hover:bg-[#a8bd00]"
                       onClick={() => { setSelectedUser(user); setIsApproveModalOpen(true); }}
                     >
                       <Check size={16} className="mr-2" /> Aprobar
@@ -192,7 +191,7 @@ export default function StaffDashboard({ onLogout }: { onLogout: () => void }) {
                 onClick={() => setSelectedUser(user)}
               >
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full flex items-center justify-center font-bold text-white shadow-inner bg-primary">
+                  <div className="h-10 w-10 rounded-full flex items-center justify-center font-bold text-[#1e1e1e] shadow-inner bg-[#bbd300]">
                     {user.name.charAt(0)}
                   </div>
                   <div>
@@ -203,7 +202,7 @@ export default function StaffDashboard({ onLogout }: { onLogout: () => void }) {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge className="bg-green-500 text-[10px] px-2 py-0">Activo</Badge>
+                  <Badge className="bg-[#bbd300] text-[#1e1e1e] text-[10px] px-2 py-0">Activo</Badge>
                   <Info size={14} className="text-muted-foreground" />
                 </div>
               </div>
@@ -220,7 +219,7 @@ export default function StaffDashboard({ onLogout }: { onLogout: () => void }) {
                 <div className="flex items-center gap-3">
                   <div className={cn(
                     "h-10 w-10 rounded-full flex items-center justify-center font-bold text-white shadow-inner",
-                    user.status === 'REJECTED' ? 'bg-orange-400' : 'bg-red-400'
+                    user.status === 'REJECTED' ? 'bg-red-500' : 'bg-gray-400'
                   )}>
                     {user.name.charAt(0)}
                   </div>
@@ -231,7 +230,10 @@ export default function StaffDashboard({ onLogout }: { onLogout: () => void }) {
                     </p>
                   </div>
                 </div>
-                <Badge variant="destructive" className="text-[10px] px-2 py-0">
+                <Badge variant="outline" className={cn(
+                  "text-[10px] px-2 py-0",
+                  user.status === 'REJECTED' ? 'text-red-600 border-red-200' : 'text-gray-600 border-gray-200'
+                )}>
                   {user.status === 'REJECTED' ? 'Rechazado' : 'Vencido'}
                 </Badge>
               </div>
@@ -244,15 +246,15 @@ export default function StaffDashboard({ onLogout }: { onLogout: () => void }) {
       {selectedUser && !isApproveModalOpen && !isRejectModalOpen && !isChangePlanOpen && (
         <Dialog open={!!selectedUser} onOpenChange={() => setSelectedUser(null)}>
           <DialogContent className="max-w-[95vw] rounded-3xl p-0 overflow-hidden border-none sm:max-w-md">
-            <DialogHeader className="p-6 bg-primary text-white text-left relative">
+            <DialogHeader className="p-6 bg-[#1e1e1e] text-white text-left relative">
               <div className="flex justify-between items-start">
                 <div>
                   <DialogTitle className="text-2xl font-bold">{selectedUser.name}</DialogTitle>
-                  <DialogDescription className="text-white/80">Gestión de usuario y membresía.</DialogDescription>
+                  <DialogDescription className="text-white/80">Gestión de usuario OMNIA Fitness.</DialogDescription>
                 </div>
                 <Badge className={cn(
                   "bg-white/20 text-white border-white/20",
-                  selectedUser.status === 'ACTIVE' && "bg-green-500/30",
+                  selectedUser.status === 'ACTIVE' && "bg-[#bbd300] text-[#1e1e1e]",
                   selectedUser.status === 'PENDING' && "bg-blue-500/30",
                   selectedUser.status === 'REJECTED' && "bg-red-500/30"
                 )}>
@@ -283,9 +285,9 @@ export default function StaffDashboard({ onLogout }: { onLogout: () => void }) {
               </div>
 
               {/* Biometrics Status */}
-              <div className="flex items-center justify-between p-4 bg-accent/5 rounded-2xl border border-accent/10">
+              <div className="flex items-center justify-between p-4 bg-[#bbd300]/5 rounded-2xl border border-[#bbd300]/10">
                 <div className="flex items-center gap-3">
-                  <div className="bg-accent text-white p-2 rounded-lg">
+                  <div className="bg-[#bbd300] text-[#1e1e1e] p-2 rounded-lg">
                     <CheckCircle2 size={18} />
                   </div>
                   <div>
@@ -293,7 +295,7 @@ export default function StaffDashboard({ onLogout }: { onLogout: () => void }) {
                     <p className="text-[10px] text-muted-foreground">Liveness: {selectedUser.livenessStatus || 'OK'}</p>
                   </div>
                 </div>
-                <Badge variant="outline" className="text-accent border-accent/20">VALIDADO</Badge>
+                <Badge variant="outline" className="text-[#1e1e1e] border-[#bbd300]/20 bg-[#bbd300]/10">VALIDADO</Badge>
               </div>
 
               {/* Quick Actions Section */}
@@ -303,17 +305,17 @@ export default function StaffDashboard({ onLogout }: { onLogout: () => void }) {
                   <div className="grid grid-cols-1 gap-2">
                     <Button 
                       variant="outline" 
-                      className="w-full justify-start h-12 rounded-xl border-blue-100 text-blue-600 hover:bg-blue-50"
+                      className="w-full justify-start h-12 rounded-xl border-gray-100 text-[#1e1e1e] hover:bg-gray-50"
                       onClick={() => handleExtend(selectedUser.id)}
                     >
-                      <Clock size={18} className="mr-3" /> Extender 7 días
+                      <Clock size={18} className="mr-3 text-[#bbd300]" /> Extender 7 días
                     </Button>
                     <Button 
                       variant="outline" 
-                      className="w-full justify-start h-12 rounded-xl border-primary/10 text-primary hover:bg-primary/5"
+                      className="w-full justify-start h-12 rounded-xl border-gray-100 text-[#1e1e1e] hover:bg-gray-50"
                       onClick={() => setIsChangePlanOpen(true)}
                     >
-                      <RefreshCcw size={18} className="mr-3" /> Cambiar plan
+                      <RefreshCcw size={18} className="mr-3 text-[#bbd300]" /> Cambiar plan
                     </Button>
                     {selectedUser.status === 'ACTIVE' && (
                       <Button 
@@ -335,7 +337,7 @@ export default function StaffDashboard({ onLogout }: { onLogout: () => void }) {
                   <Button variant="outline" className="flex-1 rounded-xl h-12" onClick={() => setIsRejectModalOpen(true)}>
                     Rechazar
                   </Button>
-                  <Button className="flex-1 rounded-xl h-12" onClick={() => setIsApproveModalOpen(true)}>
+                  <Button className="flex-1 rounded-xl h-12 bg-[#bbd300] text-[#1e1e1e] hover:bg-[#a8bd00]" onClick={() => setIsApproveModalOpen(true)}>
                     Aprobar Registro
                   </Button>
                 </>
@@ -354,7 +356,7 @@ export default function StaffDashboard({ onLogout }: { onLogout: () => void }) {
         <DialogContent className="max-w-[90vw] rounded-3xl sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Cambiar Plan</DialogTitle>
-            <DialogDescription>Selecciona el nuevo plan para {selectedUser?.name}. El periodo se reiniciará.</DialogDescription>
+            <DialogDescription>Selecciona el nuevo plan para {selectedUser?.name}.</DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-4">
             <Select defaultValue={selectedUser?.membership?.plan || "Mensual"} onValueChange={(val) => setSelectedPlan(val as MembershipPlan)}>
@@ -370,7 +372,7 @@ export default function StaffDashboard({ onLogout }: { onLogout: () => void }) {
           </div>
           <DialogFooter className="grid grid-cols-2 gap-2">
             <Button variant="outline" onClick={() => setIsChangePlanOpen(false)}>Cancelar</Button>
-            <Button onClick={handleChangePlanSubmit}>Actualizar Plan</Button>
+            <Button className="bg-[#bbd300] text-[#1e1e1e] hover:bg-[#a8bd00]" onClick={handleChangePlanSubmit}>Actualizar Plan</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -380,10 +382,10 @@ export default function StaffDashboard({ onLogout }: { onLogout: () => void }) {
         <DialogContent className="max-w-[90vw] rounded-3xl sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Calendar className="text-primary" /> Asignar Plan Inicial
+              <Calendar className="text-[#bbd300]" /> Asignar Plan Inicial
             </DialogTitle>
             <DialogDescription>
-              Selecciona el plan para activar la membresía de {selectedUser?.name}.
+              Selecciona el plan para activar la membresía en OMNIA Fitness.
             </DialogDescription>
           </DialogHeader>
           <div className="py-6 space-y-4">
@@ -403,7 +405,7 @@ export default function StaffDashboard({ onLogout }: { onLogout: () => void }) {
           </div>
           <DialogFooter className="grid grid-cols-2 gap-2">
             <Button variant="outline" onClick={() => setIsApproveModalOpen(false)}>Cancelar</Button>
-            <Button onClick={handleApprove}>Confirmar y Activar</Button>
+            <Button className="bg-[#bbd300] text-[#1e1e1e] hover:bg-[#a8bd00]" onClick={handleApprove}>Confirmar y Activar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -414,7 +416,7 @@ export default function StaffDashboard({ onLogout }: { onLogout: () => void }) {
           <DialogHeader>
             <DialogTitle className="text-destructive">Rechazar Solicitud</DialogTitle>
             <DialogDescription>
-              Indica el motivo por el cual no se puede validar este usuario.
+              Indica el motivo del rechazo para {selectedUser?.name}.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-4">
