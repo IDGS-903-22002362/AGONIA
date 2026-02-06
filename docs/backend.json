@@ -1,0 +1,258 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user within the GymCentral application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "User's full name."
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "User's phone number."
+        },
+        "email": {
+          "type": "string",
+          "description": "User's email address.",
+          "format": "email"
+        },
+        "validationStatus": {
+          "type": "string",
+          "description": "Status of the user's validation (e.g., Pending, Approved, Rejected)."
+        },
+        "credentialImageUrl": {
+          "type": "string",
+          "description": "URL of the user's uploaded credential image."
+        },
+        "facialRegistrationStatus": {
+          "type": "string",
+          "description": "Status of the simulated facial registration (e.g., OK, Pending)."
+        },
+        "membershipId": {
+          "type": "string",
+          "description": "Reference to Membership. (Relationship: User 1:1 Membership)"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "phoneNumber",
+        "email",
+        "validationStatus",
+        "credentialImageUrl",
+        "facialRegistrationStatus"
+      ]
+    },
+    "Membership": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Membership",
+      "type": "object",
+      "description": "Represents a user's gym membership.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the membership entity."
+        },
+        "plan": {
+          "type": "string",
+          "description": "Type of membership plan (e.g., Monthly, Quarterly, Annual)."
+        },
+        "startDate": {
+          "type": "string",
+          "description": "Start date of the membership.",
+          "format": "date-time"
+        },
+        "endDate": {
+          "type": "string",
+          "description": "End date of the membership.",
+          "format": "date-time"
+        },
+        "remainingDays": {
+          "type": "number",
+          "description": "Number of remaining days in the membership."
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of the membership (e.g., Active, Expired, Pending)."
+        }
+      },
+      "required": [
+        "id",
+        "plan",
+        "startDate",
+        "endDate",
+        "remainingDays",
+        "status"
+      ]
+    },
+    "Request": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Request",
+      "type": "object",
+      "description": "Represents a user registration request.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the request entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:1 Request)"
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of the request (e.g., Pending, Approved, Rejected)."
+        },
+        "rejectionReason": {
+          "type": "string",
+          "description": "Reason for rejecting the request (if applicable)."
+        },
+        "requestDate": {
+          "type": "string",
+          "description": "Date when the request was submitted.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "status",
+        "requestDate"
+      ]
+    },
+    "Payment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Payment",
+      "type": "object",
+      "description": "Represents a payment made by a user.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the payment entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Payment)"
+        },
+        "paymentDate": {
+          "type": "string",
+          "description": "Date when the payment was made.",
+          "format": "date-time"
+        },
+        "amount": {
+          "type": "number",
+          "description": "Amount paid."
+        },
+        "paymentMethod": {
+          "type": "string",
+          "description": "Method used for the payment (e.g., Credit Card, PayPal)."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "paymentDate",
+        "amount",
+        "paymentMethod"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user data.  Includes `id` for path-based ownership and denormalized `membershipId` for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/memberships/{membershipId}",
+        "definition": {
+          "entityName": "Membership",
+          "schema": {
+            "$ref": "#/backend/entities/Membership"
+          },
+          "description": "Stores membership details for each user.",
+          "params": [
+            {
+              "name": "membershipId",
+              "description": "The unique identifier for the membership."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/requests/{requestId}",
+        "definition": {
+          "entityName": "Request",
+          "schema": {
+            "$ref": "#/backend/entities/Request"
+          },
+          "description": "Stores user registration requests.",
+          "params": [
+            {
+              "name": "requestId",
+              "description": "The unique identifier for the request."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/payments/{paymentId}",
+        "definition": {
+          "entityName": "Payment",
+          "schema": {
+            "$ref": "#/backend/entities/Payment"
+          },
+          "description": "Stores payment information for each user.",
+          "params": [
+            {
+              "name": "paymentId",
+              "description": "The unique identifier for the payment."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_staff/{userId}",
+        "definition": {
+          "entityName": "role_staff",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Marks a user as staff. Existence of the document grants staff privileges.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the staff user."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "This Firestore structure is designed to support the GymCentral application, focusing on user registration, membership management, and staff approval workflows. The structure prioritizes authorization independence and follows the DBAC (Database Authentication and Authorization Control) principle. It uses path-based ownership for private data and explicit collections for global roles.\n\nKey features of the structure:\n\n1.  **Authorization Independence:** Avoids hierarchical authorization dependencies by denormalizing data where necessary. For example, membership status is stored directly within the user document, eliminating the need for `get()` calls to the `memberships` collection during authorization.\n2.  **Structural Segregation:** Enforces a homogeneous security posture by segregating data based on access needs. User data is stored under `/users/{userId}`, while requests are stored separately under `/requests/{requestId}`. This separation simplifies security rules and prevents unintended access.\n3.  **Access Modeling:** Adheres to consistent access modeling patterns. Path-based ownership (`/users/{userId}`) is used for user-specific data. Global roles (e.g., staff) are managed through existence checks in dedicated collections (`/roles_staff/{uid}`).\n4.  **QAPs (Rules are not Filters):** Supports secure `list` operations by segregating data with different access requirements into separate collections. Staff can list requests in `/requests` because the rules enforce their role.  Denormalization and structural segregation are the core features that guarantee the QAPs.\n\nDenormalization Strategy:\n\n*   The `users` collection stores the `membershipId` for easy access. The `Membership` document is associated with the user. Staff members can manage the memberships of various users and the application can fetch all required data about a user using just the `userId`.\n\nDemo Mode:\n\n*   Demo users can be handled by creating anonymous users in Firebase Authentication.  Demo data is preloaded to showcase the application's functionality."
+  }
+}
