@@ -25,6 +25,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Image from 'next/image';
@@ -279,7 +280,7 @@ export default function StaffDashboard({ onLogout }: { onLogout: () => void }) {
               <div>
                 <Label className="text-xs uppercase text-muted-foreground font-bold mb-2 block">Documentación</Label>
                 <div className="aspect-[1.6/1] bg-muted rounded-2xl relative overflow-hidden shadow-inner border">
-                  <Image src={selectedUser.idCardUrl} alt="ID Card" fill className="object-cover" />
+                  <Image src={selectedUser.idCardUrl || 'https://picsum.photos/seed/id/400/250'} alt="ID Card" fill className="object-cover" />
                   <div className="absolute inset-0 bg-black/10"></div>
                 </div>
               </div>
