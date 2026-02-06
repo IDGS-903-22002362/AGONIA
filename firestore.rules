@@ -3,129 +3,66 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * GYMCENTRAL SECURITY RULES
+     * OMNIA FITNESS SECURITY RULES
      * 
-     * CORE PHILOSOPHY:
-     * This ruleset implements a robust "Owner or Staff" authorization model. It prioritizes 
-     * structural segregation to ensure that private user data and registration workflows 
-     * are protected while allowing staff members to perform administrative tasks across 
-     * the entire platform.
-     *
-     * DATA STRUCTURE:
-     * - /users/{userId}: Private user profiles, owned by the authenticated user.
-     * - /memberships/{membershipId}: Detailed membership records, typically managed by staff.
-     * - /requests/{requestId}: User-initiated registration requests.
-     * - /payments/{paymentId}: Transaction history for gym services.
-     * - /roles_staff/{userId}: A metadata collection where the existence of a document 
-     *   grants administrative privileges to the corresponding user.
-     *
-     * KEY SECURITY DECISIONS:
-     * 1. Authorization Independence: The system relies on path-based ownership and internal 
-     *    ownership fields (denormalization) to avoid costly cross-document lookups (get() calls) 
-     *    wherever possible.
-     * 2. Staff Overrides: Users verified as "staff" via the /roles_staff collection are 
-     *    granted broad read/write access to facilitate approval workflows and management.
-     * 3. Prototyping Flexibility: While authorization is strictly enforced based on UID, 
-     *    the specific shape of the data (schemas) is not validated to allow for rapid iteration.
-     * 4. Demo Mode Support: Supports anonymous authentication to allow prospective users 
-     *    to explore the app while still maintaining a unique UID for data association.
+     * Implementa un modelo de "Dueño o Staff".
+     * Se ha ajustado para permitir que en el prototipo se puedan crear roles de staff
+     * y registros iniciales de forma fluida.
      */
 
-    // --- Helper Functions ---
-
-    /** @description Checks if the user is authenticated. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /** @description Checks if the user's UID matches the provided ID. */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /** @description Checks if the current user is a registered staff member. */
     function isStaff() {
       return isSignedIn() && exists(/databases/$(database)/documents/roles_staff/$(request.auth.uid));
     }
 
-    /** @description Validates ownership of an existing document before update or delete. */
     function isExistingOwner(ownerId) {
       return resource != null && isOwner(ownerId);
     }
 
     // --- Collection Rules ---
 
-    /**
-     * @description Rules for user profile documents.
-     * @path /users/{userId}
-     * @allow (get, list, update) if the authenticated user is the owner or staff.
-     * @deny (create) if the userId in the path doesn't match the authenticated UID.
-     * @principle Enforces path-based ownership and relational integrity between UID and data.
-     */
     match /users/{userId} {
       allow get: if isOwner(userId) || isStaff();
-      allow list: if isStaff(); // Users can get their own, only staff can list all.
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if (isOwner(userId) || isStaff()) && resource != null;
-      allow delete: if isStaff() && resource != null;
+      allow list: if isStaff();
+      allow create: if isOwner(userId);
+      allow update: if (isOwner(userId) || isStaff());
+      allow delete: if isStaff();
     }
 
-    /**
-     * @description Rules for membership records.
-     * @path /memberships/{membershipId}
-     * @allow (get) if the user is staff or if the membership ID matches their own ID.
-     * @deny (write) for non-staff users.
-     * @principle Restricts membership management to administrative staff.
-     */
     match /memberships/{membershipId} {
-      // CRITICAL: The 'Membership' entity is missing an 'ownerId' or 'userId' field.
-      // Prototyping Assumption: In a 1:1 relationship, membershipId matches userId.
       allow get: if isOwner(membershipId) || isStaff();
       allow list: if isStaff();
-      allow create, update, delete: if isStaff(); // TODO: Add owner validation if users should manage their own.
+      allow create, update, delete: if isStaff();
     }
 
-    /**
-     * @description Rules for registration requests.
-     * @path /requests/{requestId}
-     * @allow (create) if the requester's UID is correctly set in the userId field.
-     * @allow (get, update) if the user owns the request or is staff.
-     * @principle Uses internal field 'userId' for ownership validation (P3.5).
-     */
     match /requests/{requestId} {
       allow get: if isOwner(resource.data.userId) || isStaff();
       allow list: if isStaff();
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update: if (isExistingOwner(resource.data.userId) || isStaff()) && request.resource.data.userId == resource.data.userId;
-      allow delete: if isStaff() && resource != null;
+      allow update: if (isExistingOwner(resource.data.userId) || isStaff());
+      allow delete: if isStaff();
     }
 
-    /**
-     * @description Rules for payment records.
-     * @path /payments/{paymentId}
-     * @allow (get) if the user is the payer or staff.
-     * @allow (create) if the user logs their own payment.
-     * @principle Validates that payments are only visible to the relevant parties.
-     */
     match /payments/{paymentId} {
       allow get: if isOwner(resource.data.userId) || isStaff();
-      allow list: if isStaff(); // Prevents users from listing other users' payments.
+      allow list: if isStaff();
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update: if isStaff() && resource != null; // Payments are usually immutable for users.
-      allow delete: if isStaff() && resource != null;
+      allow update, delete: if isStaff();
     }
 
-    /**
-     * @description Global staff roles collection.
-     * @path /roles_staff/{userId}
-     * @allow (get) if signed in to allow the app to check local user permissions.
-     * @deny (write) all client-side writes.
-     * @principle Protects role-based access control flags from unauthorized modification.
-     */
     match /roles_staff/{userId} {
       allow get: if isSignedIn();
       allow list: if isStaff();
-      allow create, update, delete: if false; // Managed via Admin SDK or Console.
+      // Permitimos creación en el prototipo para que el botón "Login as Staff" funcione
+      allow create: if isOwner(userId);
+      allow update, delete: if false;
     }
   }
 }
