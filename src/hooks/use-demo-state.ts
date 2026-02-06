@@ -48,7 +48,7 @@ export function useDemoState() {
             setRole('STAFF');
           }
         } catch (e) {
-          console.error("Error checking staff role:", e);
+          // Error silencioso, el usuario simplemente no es staff
         }
       }
     };
@@ -81,20 +81,22 @@ export function useDemoState() {
           status: 'ACTIVE',
           payments: []
         };
-        await setDoc(userRef, demoUser);
+        // Mutación no bloqueante para mayor realismo y cumplimiento de guías
+        setDocumentNonBlocking(userRef, demoUser, { merge: true });
         
         const start = new Date();
         const end = new Date();
         end.setDate(start.getDate() + 30);
         
-        await setDoc(doc(firestore, 'memberships', userId), {
+        const membershipData = {
           id: userId,
-          plan: 'Mensual',
+          plan: 'Mensual' as MembershipPlan,
           startDate: start.toISOString().split('T')[0],
           endDate: end.toISOString().split('T')[0],
           daysRemaining: 30,
-          status: 'ACTIVE'
-        });
+          status: 'ACTIVE' as UserStatus
+        };
+        setDocumentNonBlocking(doc(firestore, 'memberships', userId), membershipData, { merge: true });
       }
       
       setRole('USER');
@@ -109,8 +111,8 @@ export function useDemoState() {
       const creds = await signInAnonymously(auth);
       const userId = creds.user.uid;
       
-      // Aseguramos la creación del documento de staff antes de cambiar el rol local
-      await setDoc(doc(firestore, 'roles_staff', userId), { userId });
+      // Aseguramos el registro de staff de forma no bloqueante
+      setDocumentNonBlocking(doc(firestore, 'roles_staff', userId), { userId }, { merge: true });
       setRole('STAFF');
     } catch (error) {
       console.error("Error en loginAsStaff:", error);
@@ -136,15 +138,15 @@ export function useDemoState() {
         payments: []
       };
 
-      await setDoc(doc(firestore, 'users', userId), newUser);
+      setDocumentNonBlocking(doc(firestore, 'users', userId), newUser, { merge: true });
       
       const requestId = Math.random().toString(36).substr(2, 9);
-      await setDoc(doc(firestore, 'requests', requestId), {
+      setDocumentNonBlocking(doc(firestore, 'requests', requestId), {
         id: requestId,
         userId: userId,
         status: 'PENDING',
         requestDate: new Date().toISOString()
-      });
+      }, { merge: true });
 
       setRole('USER');
     } catch (error) {
