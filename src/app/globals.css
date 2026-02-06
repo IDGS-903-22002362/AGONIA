@@ -36,15 +36,29 @@
   }
 }
 
-/* Mobile Simulation Styles */
+/* Mobile View Adjustments */
 .mobile-view {
-  max-width: 430px;
+  width: 100%;
   margin: 0 auto;
   min-height: 100vh;
   background-color: hsl(var(--background));
   position: relative;
   overflow-x: hidden;
-  box-shadow: 0 0 50px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+}
+
+/* On Desktop/Large screens, simulate a mobile device */
+@media (min-width: 640px) {
+  .mobile-view {
+    max-width: 430px;
+    box-shadow: 0 0 50px rgba(0,0,0,0.2);
+    height: 90vh;
+    min-height: 800px;
+    margin: 2rem auto;
+    border-radius: 3rem;
+    border: 8px solid #333;
+  }
 }
 
 .facial-guide {

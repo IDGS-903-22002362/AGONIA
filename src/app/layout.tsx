@@ -19,10 +19,11 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=PT+Sans:wght@400;700&display=swap" rel="stylesheet" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
       </head>
-      <body className="font-body antialiased bg-[#1e1e1e] min-h-screen flex items-center justify-center">
+      <body className="font-body antialiased bg-[#121212] min-h-screen sm:flex sm:items-center sm:justify-center">
         <FirebaseClientProvider>
-          <div className="mobile-view shadow-2xl overflow-hidden bg-background">
+          <div className="mobile-view overflow-hidden bg-background">
             {children}
           </div>
           <Toaster />
