@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { useFirestore, useUser } from '@/firebase';
 import { collection, addDoc, doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { loadFaceApiModels, getFaceLandmarker } from '@/lib/face-loader';
@@ -119,7 +118,6 @@ export default function INEVerificationPage() {
         throw new Error("No se pudo detectar el rostro. Asegúrate de estar en un lugar iluminado.");
       }
 
-      // Capturar imagen para preview
       const canvas = document.createElement('canvas');
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
@@ -172,7 +170,7 @@ export default function INEVerificationPage() {
         pdf417: pdf417Result,
         selfie: {
           descriptor: selfieDescriptor,
-          imageUrl: selfieUrl // En prototipo guardamos b64
+          imageUrl: selfieUrl 
         },
         match: matchResult ? {
           comparedTo: "enroll_embedding",
@@ -222,7 +220,6 @@ export default function INEVerificationPage() {
           </Card>
         ) : (
           <div className="space-y-4">
-            {/* Steps Indicator */}
             <div className="flex justify-between items-center px-2">
               {[
                 { id: 'SCAN_INE', label: 'Escanear', icon: Scan },
@@ -234,7 +231,7 @@ export default function INEVerificationPage() {
                     "h-8 w-8 rounded-full flex items-center justify-center transition-colors",
                     step === s.id ? "bg-[#bbd300] text-[#1e1e1e]" : "bg-muted text-muted-foreground"
                   )}>
-                    <s.icon size(16) />
+                    <s.icon size={16} />
                   </div>
                   <span className="text-[10px] font-bold uppercase">{s.label}</span>
                 </div>
@@ -245,7 +242,7 @@ export default function INEVerificationPage() {
               <Card className="rounded-3xl border-none shadow-xl overflow-hidden animate-in fade-in slide-in-from-bottom-4">
                 <CardHeader className="bg-[#1e1e1e] text-white py-4">
                   <CardTitle className="text-sm flex items-center gap-2">
-                    <Scan className="text-[#bbd300]" size(16) /> Reverso de Identificación
+                    <Scan className="text-[#bbd300]" size={16} /> Reverso de Identificación
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-6 space-y-6">
@@ -259,7 +256,7 @@ export default function INEVerificationPage() {
                         />
                         <div className="absolute inset-0 border-2 border-[#bbd300]/30 border-dashed m-8 rounded-xl pointer-events-none group-hover:border-[#bbd300] transition-colors"></div>
                         <div className="absolute bottom-4 left-0 right-0 text-center">
-                          <Badge className="bg-black/60 backdrop-blur-md text-white border-none">Buscando código PDF417...</Badge>
+                          <span className="bg-black/60 backdrop-blur-md text-white border-none text-[10px] px-3 py-1 rounded-full uppercase">Buscando código PDF417...</span>
                         </div>
                       </div>
                       <div className="text-center space-y-4">
@@ -285,7 +282,7 @@ export default function INEVerificationPage() {
                   ) : (
                     <div className="space-y-4 animate-in zoom-in-95 duration-300">
                       <div className="p-4 bg-green-50 border border-green-100 rounded-2xl flex items-center gap-3">
-                        <CheckCircle2 className="text-green-500 shrink-0" size(24) />
+                        <CheckCircle2 className="text-green-500 shrink-0" size={24} />
                         <div>
                           <p className="font-bold text-green-800 text-sm">Código Detectado</p>
                           <p className="text-[10px] text-green-600 uppercase font-bold">Datos extraídos con éxito</p>
@@ -326,7 +323,7 @@ export default function INEVerificationPage() {
               <Card className="rounded-3xl border-none shadow-xl overflow-hidden animate-in fade-in slide-in-from-right-4">
                 <CardHeader className="bg-[#1e1e1e] text-white py-4">
                   <CardTitle className="text-sm flex items-center gap-2">
-                    <CameraIcon className="text-[#bbd300]" size(16) /> Captura de Selfie
+                    <CameraIcon className="text-[#bbd300]" size={16} /> Captura de Selfie
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-6 space-y-4">
@@ -353,11 +350,10 @@ export default function INEVerificationPage() {
               <Card className="rounded-3xl border-none shadow-xl overflow-hidden animate-in fade-in slide-in-from-bottom-4">
                 <CardHeader className="bg-[#1e1e1e] text-white py-4">
                   <CardTitle className="text-sm flex items-center gap-2">
-                    <UserCheck className="text-[#bbd300]" size(16) /> Resultado de Validación
+                    <UserCheck className="text-[#bbd300]" size={16} /> Resultado de Validación
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-6 space-y-6">
-                  {/* Summary Header */}
                   <div className="flex items-center gap-4">
                     {selfieUrl && (
                       <div className="relative h-20 w-20 rounded-2xl overflow-hidden shadow-md border-2 border-[#bbd300]">
@@ -368,17 +364,16 @@ export default function INEVerificationPage() {
                       <p className="text-[10px] font-bold text-muted-foreground uppercase">Estatus de Validación</p>
                       <div className="flex items-center gap-2 mt-1">
                         {matchResult?.match ? (
-                          <Badge className="bg-green-500 text-white border-none">COINCIDENCIA EXITOSA</Badge>
+                          <div className="bg-green-500 text-white px-2 py-0.5 rounded-full text-[9px] font-bold uppercase">COINCIDENCIA EXITOSA</div>
                         ) : matchResult ? (
-                          <Badge variant="destructive">NO COINCIDE</Badge>
+                          <div className="bg-destructive text-white px-2 py-0.5 rounded-full text-[9px] font-bold uppercase">NO COINCIDE</div>
                         ) : (
-                          <Badge className="bg-blue-500 text-white border-none">PENDIENTE DE REVISIÓN</Badge>
+                          <div className="bg-blue-500 text-white px-2 py-0.5 rounded-full text-[9px] font-bold uppercase">PENDIENTE DE REVISIÓN</div>
                         )}
                       </div>
                     </div>
                   </div>
 
-                  {/* Match Section */}
                   <div className="space-y-3 bg-muted/20 p-4 rounded-2xl border">
                     <Label className="text-[10px] font-bold uppercase text-muted-foreground">Comparar con Usuario Registrado (Opcional)</Label>
                     <div className="flex gap-2">
@@ -402,7 +397,7 @@ export default function INEVerificationPage() {
                         "mt-2 p-3 rounded-xl flex items-center gap-3 animate-in slide-in-from-top-2",
                         matchResult.match ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"
                       )}>
-                        {matchResult.match ? <CheckCircle2 size(16) /> : <XCircle size(16) />}
+                        {matchResult.match ? <CheckCircle2 size={16} /> : <XCircle size={16} />}
                         <p className="text-[10px] font-bold uppercase">
                           Distancia: {matchResult.distance.toFixed(4)} (Umbral: {FACE_MATCH_THRESHOLD})
                         </p>
@@ -410,17 +405,16 @@ export default function INEVerificationPage() {
                     )}
                   </div>
 
-                  {/* Data Summary */}
                   <div className="space-y-2">
                     <p className="text-[10px] font-bold uppercase text-muted-foreground px-1">Resumen de Identificación</p>
                     <div className="grid grid-cols-1 gap-2">
                       <div className="p-3 bg-white border rounded-xl flex items-center justify-between">
                         <span className="text-xs text-muted-foreground">PDF417 Leído</span>
-                        <CheckCircle2 size(16) className="text-[#bbd300]" />
+                        <CheckCircle2 size={16} className="text-[#bbd300]" />
                       </div>
                       <div className="p-3 bg-white border rounded-xl flex items-center justify-between">
                         <span className="text-xs text-muted-foreground">Biometría Capturada</span>
-                        <CheckCircle2 size(16) className="text-[#bbd300]" />
+                        <CheckCircle2 size={16} className="text-[#bbd300]" />
                       </div>
                     </div>
                   </div>
@@ -443,20 +437,6 @@ export default function INEVerificationPage() {
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-function Badge({ children, className, variant = "default" }: { children: React.ReactNode, className?: string, variant?: "default" | "outline" | "destructive" }) {
-  return (
-    <div className={cn(
-      "px-2 py-0.5 rounded-full text-[9px] font-bold uppercase border",
-      variant === "default" && "bg-primary/10 text-primary border-primary/20",
-      variant === "outline" && "border-border text-muted-foreground",
-      variant === "destructive" && "bg-destructive/10 text-destructive border-destructive/20",
-      className
-    )}>
-      {children}
     </div>
   );
 }
