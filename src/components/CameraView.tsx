@@ -23,14 +23,13 @@ export function CameraView({
   showFacialGuide = true,
   isFaceDetected = false,
   isFaceCentered = false,
-  initialFacingMode = 'environment' // Por defecto la trasera para escanear INE
+  initialFacingMode = 'environment'
 }: CameraViewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>(initialFacingMode);
   const onVideoReadyRef = useRef(onVideoReady);
 
-  // Mantener el ref del callback actualizado
   useEffect(() => {
     onVideoReadyRef.current = onVideoReady;
   }, [onVideoReady]);
@@ -39,18 +38,19 @@ export function CameraView({
     let stream: MediaStream | null = null;
 
     const getCameraPermission = async () => {
-      // Detener tracks anteriores si existen para liberar el hardware
       if (videoRef.current && videoRef.current.srcObject) {
         const currentStream = videoRef.current.srcObject as MediaStream;
         currentStream.getTracks().forEach(track => track.stop());
       }
 
       try {
+        // Solicitamos resolución más alta (1080p ideal) para escaneo de códigos densos
         stream = await navigator.mediaDevices.getUserMedia({ 
           video: { 
-            width: { ideal: 1280 }, 
-            height: { ideal: 720 },
-            facingMode: facingMode
+            width: { ideal: 1920, min: 1280 }, 
+            height: { ideal: 1080, min: 720 },
+            facingMode: facingMode,
+            frameRate: { ideal: 30 }
           } 
         });
         setHasCameraPermission(true);
@@ -76,7 +76,7 @@ export function CameraView({
         stream.getTracks().forEach(track => track.stop());
       }
     };
-  }, [facingMode]); // Reiniciar cada vez que cambie el facingMode
+  }, [facingMode]);
 
   const toggleCamera = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -91,7 +91,7 @@ export function CameraView({
           <Camera className="h-4 w-4" />
           <AlertTitle>Error de Cámara</AlertTitle>
           <AlertDescription>
-            No se pudo acceder a la cámara. Por favor, asegúrate de dar los permisos necesarios.
+            No se pudo acceder a la cámara. Asegúrate de usar HTTPS y dar permisos.
             <Button variant="outline" size="sm" className="mt-2 block" onClick={() => window.location.reload()}>
               <RefreshCw className="mr-2 h-4 w-4" /> Reintentar
             </Button>
@@ -107,14 +107,13 @@ export function CameraView({
         ref={videoRef}
         className={cn(
           "w-full h-full object-cover transition-transform duration-500",
-          facingMode === 'user' && "scale-x-[-1]" // Efecto espejo solo en cámara frontal
+          facingMode === 'user' && "scale-x-[-1]"
         )}
         autoPlay
         muted
         playsInline
       />
       
-      {/* Botón para cambiar cámara */}
       <Button 
         variant="secondary" 
         size="icon" 

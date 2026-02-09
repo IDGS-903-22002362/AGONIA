@@ -48,6 +48,7 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
   
   const videoElementRef = useRef<HTMLVideoElement | null>(null);
   const loopsActiveRef = useRef(false);
+  const lastScanTimeRef = useRef(0);
 
   useEffect(() => {
     const init = async () => {
@@ -65,28 +66,31 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
 
     const landmarker = await getFaceLandmarker();
     
-    const run = async () => {
+    const run = async (time: number) => {
       if (!loopsActiveRef.current) return;
 
       if (videoElementRef.current && videoElementRef.current.readyState === 4) {
-        // PASO 2: Escaneo de INE
+        // Escaneo de INE (Throttled a 500ms para ahorrar CPU en móviles)
         if (step === 2 && !pdf417Result && !isProcessing) {
-          try {
-            const text = await decodePDF417FromVideo(videoElementRef.current);
-            if (text) {
-              const parsed = parseINEData(text);
-              setPdf417Result({ raw: text, parsed });
-              toast({ 
-                title: "Documento Detectado", 
-                description: `ID: ${parsed.cic || parsed.curp || 'Confirmado'}` 
-              });
+          if (time - lastScanTimeRef.current > 500) {
+            lastScanTimeRef.current = time;
+            try {
+              const text = await decodePDF417FromVideo(videoElementRef.current);
+              if (text) {
+                const parsed = parseINEData(text);
+                setPdf417Result({ raw: text, parsed });
+                toast({ 
+                  title: "Documento Detectado", 
+                  description: "Datos extraídos correctamente." 
+                });
+              }
+            } catch (e) {
+              // Error silencioso en el loop
             }
-          } catch (e) {
-            // Error silencioso en el loop de escaneo
           }
         }
 
-        // PASO 3: Detección Facial
+        // Detección Facial
         if (step === 3 && !isProcessing) {
           try {
             const results = landmarker.detectForVideo(videoElementRef.current, performance.now());
@@ -111,7 +115,7 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
       }
     };
     
-    run();
+    requestAnimationFrame(run);
   }, [step, pdf417Result, isProcessing, toast]);
 
   const handleVideoReady = useCallback((video: HTMLVideoElement) => {
@@ -166,12 +170,12 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
         const parsed = parseINEData(text);
         setPdf417Result({ raw: text, parsed });
         setFormData(prev => ({ ...prev, idCardUrl: src }));
-        toast({ title: "INE Validada", description: "Datos extraídos correctamente de la foto." });
+        toast({ title: "INE Validada", description: "Datos extraídos de la foto." });
         setScanProgress(100);
       } else {
         toast({ 
           title: "Lectura Fallida", 
-          description: "No se detectó el código QR/PDF417. Asegúrate de que la foto sea del reverso, esté bien iluminada y no esté borrosa.", 
+          description: "No se detectó el código. Prueba con una foto más clara y bien iluminada.", 
           variant: "destructive" 
         });
         setScanProgress(0);
@@ -244,7 +248,7 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
                 <div className="px-2">
                   <h2 className="text-xl font-bold">{step === 2 ? 'Valida tu Identidad' : 'Registro Facial'}</h2>
                   <p className="text-muted-foreground text-xs uppercase font-bold tracking-tight">
-                    {step === 2 ? 'Muestra el reverso de tu INE (Códigos QR)' : 'Alinea tu rostro con el óvalo'}
+                    {step === 2 ? 'Muestra el reverso de tu INE' : 'Alinea tu rostro con el óvalo'}
                   </p>
                 </div>
 
@@ -298,7 +302,7 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
                       <CheckCircle2 size={24} />
                       <div>
                         <p className="font-bold text-sm">Identidad Validada</p>
-                        <p className="text-[10px] uppercase text-muted-foreground">Datos extraídos del código QR</p>
+                        <p className="text-[10px] uppercase text-muted-foreground">Datos extraídos correctamente</p>
                       </div>
                     </div>
                     <Button className="w-full h-12 rounded-xl bg-[#bbd300] text-[#1e1e1e] font-bold" onClick={() => setStep(3)}>
@@ -311,7 +315,7 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
                   <div className="text-center py-2 flex flex-col gap-2">
                     <div className="flex items-center gap-2 px-4 opacity-60">
                       <div className="h-px flex-1 bg-border"></div>
-                      <span className="text-[10px] font-bold uppercase">O sube una foto clara</span>
+                      <span className="text-[10px] font-bold uppercase">O sube una foto</span>
                       <div className="h-px flex-1 bg-border"></div>
                     </div>
                     <Input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" id="file-upload" />
@@ -337,7 +341,7 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
                 <div className="w-full bg-muted/30 p-4 rounded-2xl border border-dashed text-left space-y-1">
                   <p className="text-[10px] font-bold text-muted-foreground uppercase">Resultados</p>
                   <div className="flex justify-between items-center">
-                    <span className="text-xs">INE (QR Detectado)</span>
+                    <span className="text-xs">INE (Código Detectado)</span>
                     <Badge variant="outline" className="text-green-600 bg-green-50 border-green-100">OK</Badge>
                   </div>
                   <div className="flex justify-between items-center">
