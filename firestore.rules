@@ -1,13 +1,10 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
      * OMNIA FITNESS SECURITY RULES
-     * 
-     * Implementa un modelo de "Dueño o Staff".
-     * Se ha ajustado para permitir que en el prototipo se puedan gestionar registros
-     * de forma fluida.
      */
 
     function isSignedIn() {
@@ -22,11 +19,15 @@ service cloud.firestore {
       return isSignedIn() && exists(/databases/$(database)/documents/roles_staff/$(request.auth.uid));
     }
 
+    // --- Biometría Facial (SOLO PROTOTIPO - NO PRODUCCIÓN) ---
+    match /face_embeddings/{userId} {
+      allow read, write: if isSignedIn();
+    }
+
     // --- Collection Rules ---
 
     match /users/{userId} {
       allow get: if isOwner(userId) || isStaff();
-      // Permitimos list a usuarios autenticados para facilitar el funcionamiento del prototipo
       allow list: if isSignedIn();
       allow create: if isOwner(userId);
       allow update: if isOwner(userId) || isStaff();
@@ -35,9 +36,7 @@ service cloud.firestore {
 
     match /memberships/{membershipId} {
       allow get: if isOwner(membershipId) || isStaff();
-      // Permitimos list para que el dashboard funcione correctamente en el prototipo
       allow list: if isSignedIn();
-      // Permitimos creación al dueño para el flujo de "Acceso Miembro" de la demo
       allow create: if isOwner(membershipId) || isStaff();
       allow update, delete: if isStaff();
     }
@@ -60,7 +59,6 @@ service cloud.firestore {
     match /roles_staff/{userId} {
       allow get: if isSignedIn();
       allow list: if isSignedIn();
-      // Permitimos creación en el prototipo para que el botón "Panel de Staff" funcione
       allow create: if isOwner(userId);
       allow update, delete: if false;
     }
