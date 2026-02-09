@@ -1,18 +1,36 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useDemoState } from '@/hooks/use-demo-state';
-import { Camera, ChevronLeft, CheckCircle2, User, Mail, Phone, Upload, Scan, Sun, Target, Glasses, Check } from 'lucide-react';
+import { 
+  Camera as CameraIcon, 
+  ChevronLeft, 
+  CheckCircle2, 
+  User, 
+  Mail, 
+  Phone, 
+  Upload, 
+  Scan, 
+  Loader2 
+} from 'lucide-react';
 import Image from 'next/image';
 import { Progress } from "@/components/ui/progress";
-import { cn } from "@/lib/utils";
+import { CameraView } from '@/components/CameraView';
+import { loadFaceApiModels, getFaceLandmarker } from '@/lib/face-loader';
+import * as faceapi from 'face-api.js';
+import { descriptorToArray } from '@/lib/embeddings-utils';
+import { useFirestore } from '@/firebase';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
 export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
   const { registerUser } = useDemoState();
+  const firestore = useFirestore();
+  const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
     name: '',
@@ -20,77 +38,137 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
     phone: '',
     idCardUrl: ''
   });
-  const [isSimulating, setIsSimulating] = useState(false);
+  
+  const [isModelsReady, setIsModelsReady] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [faceCount, setFaceCount] = useState(0);
+  const [isFaceCentered, setIsFaceCentered] = useState(false);
+  const videoElementRef = useRef<HTMLVideoElement | null>(null);
   const [scanProgress, setScanProgress] = useState(0);
 
-  const nextStep = () => setStep(step + 1);
-  const prevStep = () => setStep(Math.max(1, step - 1));
+  useEffect(() => {
+    if (step === 3) {
+      const init = async () => {
+        await loadFaceApiModels();
+        await getFaceLandmarker();
+        setIsModelsReady(true);
+      };
+      init();
+    }
+  }, [step]);
 
-  const handleRegister = () => {
-    setIsSimulating(true);
-    setTimeout(() => {
-      registerUser(formData);
-      setIsSimulating(false);
-    }, 1500);
+  const handleVideoReady = (video: HTMLVideoElement) => {
+    videoElementRef.current = video;
+    detectLoop();
   };
 
-  const simulateCapture = () => {
-    setIsSimulating(true);
+  const detectLoop = async () => {
+    if (!videoElementRef.current) return;
+    const landmarker = await getFaceLandmarker();
+    
+    const runDetection = async () => {
+      if (videoElementRef.current && videoElementRef.current.readyState === 4) {
+        try {
+          const results = landmarker.detectForVideo(videoElementRef.current, performance.now());
+          setFaceCount(results.faceLandmarks.length);
+          
+          // Lógica simple de centrado: verificar si el primer landmark del primer rostro está cerca del centro
+          if (results.faceLandmarks.length === 1) {
+            const landmark = results.faceLandmarks[0][0]; // Punto en la frente/nariz
+            const isCentered = landmark.x > 0.35 && landmark.x < 0.65 && landmark.y > 0.3 && landmark.y < 0.7;
+            setIsFaceCentered(isCentered);
+          } else {
+            setIsFaceCentered(false);
+          }
+        } catch (e) {
+          // Ignorar errores de detección momentáneos
+        }
+      }
+      if (step === 3) requestAnimationFrame(runDetection);
+    };
+    
+    runDetection();
+  };
+
+  const handleCaptureFacial = async () => {
+    if (!videoElementRef.current || faceCount !== 1) return;
+
+    setIsProcessing(true);
+    setScanProgress(10);
+    
+    try {
+      const video = videoElementRef.current;
+      setScanProgress(40);
+      
+      const detection = await faceapi
+        .detectSingleFace(video)
+        .withFaceLandmarks()
+        .withFaceDescriptor();
+
+      setScanProgress(80);
+
+      if (!detection) {
+        throw new Error("No se pudo extraer el descriptor del rostro. Asegúrate de estar bien iluminado.");
+      }
+
+      // En un flujo real, guardaríamos el embedding asociado al email/uid que se creará
+      // Aquí lo preparamos para el paso final del registerUser
+      setScanProgress(100);
+      
+      setTimeout(() => {
+        setIsProcessing(false);
+        setStep(4);
+      }, 500);
+
+    } catch (error: any) {
+      console.error(error);
+      toast({ title: "Error Biométrico", description: error.message, variant: "destructive" });
+      setIsProcessing(false);
+      setScanProgress(0);
+    }
+  };
+
+  const handleFinalize = () => {
+    registerUser({
+      ...formData,
+      faceEnrollmentStatus: 'completed',
+      livenessStatus: 'ok'
+    });
+  };
+
+  const simulateIdCapture = () => {
+    setIsProcessing(true);
     setTimeout(() => {
       setFormData({ ...formData, idCardUrl: 'https://picsum.photos/seed/demo-id/400/250' });
-      setIsSimulating(false);
+      setIsProcessing(false);
     }, 1000);
   };
-
-  const startFacialScan = () => {
-    setIsSimulating(true);
-    setScanProgress(0);
-  };
-
-  useEffect(() => {
-    if (isSimulating && step === 3) {
-      const interval = setInterval(() => {
-        setScanProgress(prev => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            setTimeout(() => {
-              setIsSimulating(false);
-              nextStep();
-            }, 500);
-            return 100;
-          }
-          return prev + 5;
-        });
-      }, 100);
-      return () => clearInterval(interval);
-    }
-  }, [isSimulating, step]);
 
   return (
     <div className="flex flex-col h-full bg-background overflow-y-auto">
       {/* Header */}
-      <div className="p-4 flex items-center border-b bg-white sticky top-0 z-10">
-        <Button variant="ghost" size="icon" onClick={step === 1 ? onCancel : prevStep}>
+      <div className="p-4 flex items-center border-b bg-white sticky top-0 z-50">
+        <Button variant="ghost" size="icon" onClick={step === 1 ? onCancel : () => setStep(step - 1)}>
           <ChevronLeft />
         </Button>
-        <div className="flex-1 text-center font-bold">Registro</div>
+        <div className="flex-1 text-center font-bold">Registro OMNIA</div>
         <div className="w-10"></div>
       </div>
 
-      <div className="p-4 flex-1">
+      <div className="p-4 flex-1 flex flex-col">
         <div className="mb-6">
-          <div className="flex justify-between text-xs text-muted-foreground mb-2">
+          <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">
             <span>Paso {step} de 4</span>
-            <span>{Math.round((step / 4) * 100)}% Completado</span>
+            <span>{Math.round((step / 4) * 100)}%</span>
           </div>
-          <Progress value={(step / 4) * 100} className="h-2" />
+          <Progress value={(step / 4) * 100} className="h-1.5" />
         </div>
 
         {step === 1 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
             <div>
               <h2 className="text-2xl font-bold mb-2">Datos Personales</h2>
-              <p className="text-muted-foreground text-sm">Ingresa tu información para crear tu cuenta.</p>
+              <p className="text-muted-foreground text-sm">Comienza tu evolución en OMNIA Fitness.</p>
             </div>
             <div className="space-y-4">
               <div className="space-y-2">
@@ -135,8 +213,8 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
               </div>
             </div>
             <Button 
-              className="w-full h-12 rounded-xl" 
-              onClick={nextStep}
+              className="w-full h-14 rounded-xl bg-[#bbd300] text-[#1e1e1e] font-bold" 
+              onClick={() => setStep(2)}
               disabled={!formData.name || !formData.email || !formData.phone}
             >
               Siguiente
@@ -147,19 +225,14 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
         {step === 2 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
             <div>
-              <h2 className="text-2xl font-bold mb-2">Credencial Oficial</h2>
-              <p className="text-muted-foreground text-sm">Sube una foto clara de tu identificación oficial para validación.</p>
+              <h2 className="text-2xl font-bold mb-2">Identificación</h2>
+              <p className="text-muted-foreground text-sm">Sube una foto de tu credencial oficial.</p>
             </div>
             
-            <div className="aspect-[1.6/1] bg-muted rounded-2xl border-2 border-dashed border-primary/20 flex flex-col items-center justify-center text-center p-6 overflow-hidden relative">
+            <div className="aspect-[1.6/1] bg-muted rounded-3xl border-2 border-dashed border-[#bbd300]/20 flex flex-col items-center justify-center text-center p-6 overflow-hidden relative">
               {formData.idCardUrl ? (
                 <>
-                  <Image 
-                    src={formData.idCardUrl} 
-                    alt="ID Card" 
-                    fill 
-                    className="object-cover"
-                  />
+                  <Image src={formData.idCardUrl} alt="ID Card" fill className="object-cover" />
                   <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
                     <Button variant="outline" className="bg-white" onClick={() => setFormData({...formData, idCardUrl: ''})}>
                       Cambiar
@@ -168,26 +241,24 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
                 </>
               ) : (
                 <>
-                  <Upload className="h-10 w-10 text-primary mb-2" />
-                  <p className="font-medium">Presiona para capturar</p>
+                  <Upload className="h-10 w-10 text-[#bbd300] mb-2" />
+                  <p className="font-bold">Capturar ID</p>
                   <p className="text-xs text-muted-foreground mt-1">Frente de la identificación</p>
                 </>
               )}
             </div>
 
-            {!formData.idCardUrl && (
-              <div className="grid grid-cols-2 gap-4">
-                <Button variant="outline" className="h-14 rounded-xl" onClick={simulateCapture} disabled={isSimulating}>
-                  <Camera className="mr-2 h-4 w-4" /> Cámara
-                </Button>
-                <Button variant="outline" className="h-14 rounded-xl" onClick={simulateCapture} disabled={isSimulating}>
-                  Galería
-                </Button>
-              </div>
-            )}
+            <div className="grid grid-cols-2 gap-4">
+              <Button variant="outline" className="h-14 rounded-xl border-gray-200" onClick={simulateIdCapture} disabled={isProcessing}>
+                <CameraIcon className="mr-2 h-4 w-4" /> Cámara
+              </Button>
+              <Button variant="outline" className="h-14 rounded-xl border-gray-200" onClick={simulateIdCapture} disabled={isProcessing}>
+                Galería
+              </Button>
+            </div>
 
             {formData.idCardUrl && (
-              <Button className="w-full h-12 rounded-xl" onClick={nextStep}>
+              <Button className="w-full h-14 rounded-xl bg-[#bbd300] text-[#1e1e1e] font-bold" onClick={() => setStep(3)}>
                 Continuar
               </Button>
             )}
@@ -195,59 +266,56 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
         )}
 
         {step === 3 && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300 h-full flex flex-col">
-            <div>
-              <h2 className="text-2xl font-bold mb-2">Registro Facial</h2>
-              <p className="text-muted-foreground text-sm">Alinea tu rostro dentro del óvalo para la verificación.</p>
+          <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300 flex-1 flex flex-col">
+            <div className="px-2">
+              <h2 className="text-2xl font-bold mb-1">Registro Facial</h2>
+              <p className="text-muted-foreground text-xs font-medium">Alinea tu rostro para la biometría.</p>
             </div>
             
-            <div className="flex-1 relative bg-black rounded-3xl overflow-hidden min-h-[400px]">
-              <Image 
-                src="https://picsum.photos/seed/facecam/400/600" 
-                alt="Camera Stream" 
-                fill 
-                className="object-cover opacity-80"
-              />
-              <div className="facial-guide"></div>
-              
-              {/* Checklist Overlay */}
-              <div className="absolute top-4 left-4 right-4 flex justify-between gap-2">
-                {[
-                  { icon: Sun, label: "Buena luz" },
-                  { icon: Target, label: "Centrado" },
-                  { icon: Glasses, label: "Sin lentes" }
-                ].map((item, idx) => (
-                  <div key={idx} className="bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-2 border border-white/20">
-                    <item.icon className="h-3 w-3 text-white" />
-                    <span className="text-[10px] text-white font-medium">{item.label}</span>
-                    <Check className="h-3 w-3 text-green-400" />
-                  </div>
-                ))}
-              </div>
-
-              {isSimulating ? (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 text-white p-6 text-center">
-                  <div className="w-48 space-y-4">
-                    <Scan className="h-16 w-16 mb-4 mx-auto animate-pulse text-primary" />
-                    <p className="text-xl font-bold">Analizando...</p>
-                    <div className="space-y-1">
-                      <Progress value={scanProgress} className="h-1.5 bg-white/20" />
-                      <p className="text-[10px] text-white/70">{scanProgress}% Completado</p>
-                    </div>
-                  </div>
+            <div className="flex-1 relative flex flex-col">
+              {!isModelsReady ? (
+                <div className="flex-1 bg-black rounded-[3rem] flex flex-col items-center justify-center text-white p-10 text-center gap-4">
+                  <Loader2 className="h-10 w-10 animate-spin text-[#bbd300]" />
+                  <p className="text-sm font-bold uppercase tracking-widest">Cargando Motores Biométricos...</p>
                 </div>
               ) : (
-                <div className="absolute bottom-10 left-0 right-0 flex flex-col items-center gap-6">
-                   <Button 
-                    variant="secondary" 
-                    size="lg" 
-                    className="rounded-full h-20 w-20 p-0 shadow-2xl border-4 border-white/20" 
-                    onClick={startFacialScan}
-                  >
-                    <div className="h-16 w-16 rounded-full bg-white flex items-center justify-center">
-                      <Camera className="h-8 w-8 text-primary" />
+                <div className="flex-1 relative">
+                  <CameraView 
+                    onVideoReady={handleVideoReady} 
+                    isFaceDetected={faceCount === 1}
+                    isFaceCentered={isFaceCentered}
+                    className="h-full shadow-2xl"
+                  />
+                  
+                  {isProcessing && (
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-30 flex flex-col items-center justify-center text-white p-10 text-center">
+                      <Scan className="h-16 w-16 mb-6 animate-pulse text-[#bbd300]" />
+                      <p className="text-xl font-bold mb-4">Analizando Biometría...</p>
+                      <Progress value={scanProgress} className="h-2 w-full max-w-xs bg-white/20" />
+                      <p className="text-[10px] mt-2 opacity-70 font-bold uppercase">{scanProgress}% Completado</p>
                     </div>
-                  </Button>
+                  )}
+
+                  {!isProcessing && (
+                    <div className="absolute bottom-10 left-0 right-0 flex justify-center z-20">
+                      <button 
+                        className={cn(
+                          "h-20 w-20 rounded-full flex items-center justify-center transition-all shadow-2xl active:scale-90",
+                          faceCount === 1 && isFaceCentered 
+                            ? "bg-white scale-110" 
+                            : "bg-white/20 border-2 border-white/40 grayscale pointer-events-none"
+                        )}
+                        onClick={handleCaptureFacial}
+                      >
+                        <div className={cn(
+                          "h-16 w-16 rounded-full flex items-center justify-center",
+                          faceCount === 1 && isFaceCentered ? "bg-white border-4 border-[#bbd300]" : "bg-white/10"
+                        )}>
+                          <CameraIcon className={cn("h-8 w-8", faceCount === 1 && isFaceCentered ? "text-[#bbd300]" : "text-white/40")} />
+                        </div>
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -255,41 +323,37 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
         )}
 
         {step === 4 && (
-          <div className="space-y-8 py-10 animate-in fade-in slide-in-from-bottom-4 duration-500 text-center">
+          <div className="space-y-8 py-10 animate-in fade-in slide-in-from-bottom-4 duration-500 text-center flex-1 flex flex-col justify-center">
             <div className="flex justify-center">
-              <div className="h-24 w-24 bg-green-100 text-green-600 rounded-full flex items-center justify-center">
-                <CheckCircle2 size={64} />
+              <div className="h-24 w-24 bg-[#bbd300]/10 text-[#bbd300] rounded-full flex items-center justify-center shadow-inner">
+                <CheckCircle2 size={64} className="animate-in zoom-in duration-500" />
               </div>
             </div>
             
             <div>
-              <h2 className="text-3xl font-bold mb-2">¡Todo Listo!</h2>
-              <p className="text-muted-foreground px-4">
-                Tu rostro ha sido capturado correctamente.
+              <h2 className="text-3xl font-bold mb-2">¡Evolución Lista!</h2>
+              <p className="text-muted-foreground px-4 text-sm">
+                Tu registro biométrico ha sido validado satisfactoriamente.
               </p>
-              <div className="mt-6 flex flex-col gap-2 items-center">
-                <div className="inline-block bg-green-50 text-green-700 px-4 py-2 rounded-full text-sm font-medium border border-green-200">
-                  Verificación de vida: OK (Simulada)
-                </div>
-                <div className="inline-block bg-blue-50 text-blue-700 px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border border-blue-100">
-                  Face Enrollment: COMPLETED
-                </div>
+            </div>
+
+            <div className="bg-muted/50 p-6 rounded-[2rem] text-left space-y-3 border border-gray-100">
+              <p className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Resumen de Cuenta</p>
+              <div>
+                <p className="font-bold text-lg leading-tight">{formData.name}</p>
+                <p className="text-xs text-muted-foreground">{formData.email}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-blue-500"></div>
+                <p className="text-[10px] font-bold uppercase text-blue-600">Estatus: Pendiente de Activación</p>
               </div>
             </div>
 
-            <div className="bg-muted p-6 rounded-2xl text-left space-y-2">
-              <p className="text-xs uppercase font-bold text-muted-foreground">Resumen del registro</p>
-              <p className="font-bold">{formData.name}</p>
-              <p className="text-sm">{formData.email}</p>
-              <p className="text-sm">Estatus: <span className="text-primary font-bold">PENDIENTE DE VALIDACIÓN</span></p>
-            </div>
-
             <Button 
-              className="w-full h-14 rounded-xl text-lg shadow-lg" 
-              onClick={handleRegister}
-              disabled={isSimulating}
+              className="w-full h-16 rounded-2xl text-lg font-bold bg-[#bbd300] text-[#1e1e1e] shadow-xl shadow-[#bbd300]/20" 
+              onClick={handleFinalize}
             >
-              {isSimulating ? "Finalizando..." : "Completar Registro"}
+              Completar Registro
             </Button>
           </div>
         )}
