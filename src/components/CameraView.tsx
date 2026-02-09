@@ -2,7 +2,7 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Camera, RefreshCw, Sun, Target, Glasses, Check } from "lucide-react";
+import { Camera, RefreshCw, Sun, Target, Glasses, Check, RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +13,7 @@ interface CameraViewProps {
   showFacialGuide?: boolean;
   isFaceDetected?: boolean;
   isFaceCentered?: boolean;
+  initialFacingMode?: 'user' | 'environment';
 }
 
 export function CameraView({ 
@@ -21,13 +22,15 @@ export function CameraView({
   showChecklist = true,
   showFacialGuide = true,
   isFaceDetected = false,
-  isFaceCentered = false
+  isFaceCentered = false,
+  initialFacingMode = 'environment' // Por defecto la trasera para escanear INE
 }: CameraViewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>(initialFacingMode);
   const onVideoReadyRef = useRef(onVideoReady);
 
-  // Mantener el ref del callback actualizado sin disparar el useEffect
+  // Mantener el ref del callback actualizado
   useEffect(() => {
     onVideoReadyRef.current = onVideoReady;
   }, [onVideoReady]);
@@ -36,19 +39,24 @@ export function CameraView({
     let stream: MediaStream | null = null;
 
     const getCameraPermission = async () => {
+      // Detener tracks anteriores si existen para liberar el hardware
+      if (videoRef.current && videoRef.current.srcObject) {
+        const currentStream = videoRef.current.srcObject as MediaStream;
+        currentStream.getTracks().forEach(track => track.stop());
+      }
+
       try {
         stream = await navigator.mediaDevices.getUserMedia({ 
           video: { 
             width: { ideal: 1280 }, 
             height: { ideal: 720 },
-            facingMode: 'user'
+            facingMode: facingMode
           } 
         });
         setHasCameraPermission(true);
 
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          // Esperar a que el video esté listo para disparar el callback
           videoRef.current.onloadedmetadata = () => {
             if (videoRef.current && onVideoReadyRef.current) {
               onVideoReadyRef.current(videoRef.current);
@@ -68,7 +76,13 @@ export function CameraView({
         stream.getTracks().forEach(track => track.stop());
       }
     };
-  }, []); // Solo se ejecuta al montar
+  }, [facingMode]); // Reiniciar cada vez que cambie el facingMode
+
+  const toggleCamera = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+  };
 
   if (hasCameraPermission === false) {
     return (
@@ -91,12 +105,25 @@ export function CameraView({
     <div className={cn("relative overflow-hidden rounded-[3rem] bg-black aspect-[3/4] sm:aspect-auto sm:h-[500px]", className)}>
       <video
         ref={videoRef}
-        className="w-full h-full object-cover"
+        className={cn(
+          "w-full h-full object-cover transition-transform duration-500",
+          facingMode === 'user' && "scale-x-[-1]" // Efecto espejo solo en cámara frontal
+        )}
         autoPlay
         muted
         playsInline
       />
       
+      {/* Botón para cambiar cámara */}
+      <Button 
+        variant="secondary" 
+        size="icon" 
+        className="absolute bottom-6 right-6 h-12 w-12 rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white z-30 hover:bg-black/60 shadow-lg"
+        onClick={toggleCamera}
+      >
+        <RefreshCcw className="h-6 w-6" />
+      </Button>
+
       {showChecklist && (
         <div className="absolute top-6 left-4 right-4 flex justify-between gap-2 z-20">
           {[
