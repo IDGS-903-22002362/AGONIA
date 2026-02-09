@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,22 +12,17 @@ import {
   User, 
   Mail, 
   Phone, 
-  Upload, 
   Scan, 
   Loader2,
   ChevronRight,
   History,
   IdCard
 } from 'lucide-react';
-import Image from 'next/image';
 import { Progress } from "@/components/ui/progress";
 import { CameraView } from '@/components/CameraView';
 import { loadFaceApiModels, getFaceLandmarker } from '@/lib/face-loader';
 import { decodePDF417FromVideo, decodePDF417FromImage, parseINEData } from '@/lib/pdf417';
 import * as faceapi from 'face-api.js';
-import { descriptorToArray } from '@/lib/embeddings-utils';
-import { useFirestore } from '@/firebase';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -66,16 +61,7 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
     };
   }, []);
 
-  const handleVideoReady = (video: HTMLVideoElement) => {
-    videoElementRef.current = video;
-    if (step === 2) {
-      startIneScanning();
-    } else if (step === 3) {
-      detectFaceLoop();
-    }
-  };
-
-  const startIneScanning = () => {
+  const startIneScanning = useCallback(() => {
     if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
     scanIntervalRef.current = setInterval(async () => {
       if (videoElementRef.current && step === 2 && !pdf417Result) {
@@ -88,9 +74,9 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
         }
       }
     }, 400);
-  };
+  }, [step, pdf417Result, toast]);
 
-  const detectFaceLoop = async () => {
+  const detectFaceLoop = useCallback(async () => {
     if (!videoElementRef.current) return;
     const landmarker = await getFaceLandmarker();
     
@@ -115,7 +101,16 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
     };
     
     runDetection();
-  };
+  }, [step]);
+
+  const handleVideoReady = useCallback((video: HTMLVideoElement) => {
+    videoElementRef.current = video;
+    if (step === 2) {
+      startIneScanning();
+    } else if (step === 3) {
+      detectFaceLoop();
+    }
+  }, [step, startIneScanning, detectFaceLoop]);
 
   const handleCaptureFacial = async () => {
     if (!videoElementRef.current || faceCount !== 1) return;
@@ -180,7 +175,6 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
       ...formData,
       faceEnrollmentStatus: 'completed',
       livenessStatus: 'ok',
-      // Incluimos los datos de la INE en el registro
       status: 'PENDING'
     });
   };

@@ -25,14 +25,22 @@ export function CameraView({
 }: CameraViewProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+  const onVideoReadyRef = useRef(onVideoReady);
+
+  // Mantener el ref del callback actualizado sin disparar el useEffect
+  useEffect(() => {
+    onVideoReadyRef.current = onVideoReady;
+  }, [onVideoReady]);
 
   useEffect(() => {
+    let stream: MediaStream | null = null;
+
     const getCameraPermission = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
+        stream = await navigator.mediaDevices.getUserMedia({ 
           video: { 
-            width: { ideal: 640 }, 
-            height: { ideal: 480 },
+            width: { ideal: 1280 }, 
+            height: { ideal: 720 },
             facingMode: 'user'
           } 
         });
@@ -40,9 +48,12 @@ export function CameraView({
 
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          if (onVideoReady) {
-            onVideoReady(videoRef.current);
-          }
+          // Esperar a que el video esté listo para disparar el callback
+          videoRef.current.onloadedmetadata = () => {
+            if (videoRef.current && onVideoReadyRef.current) {
+              onVideoReadyRef.current(videoRef.current);
+            }
+          };
         }
       } catch (error) {
         console.error('Error accessing camera:', error);
@@ -53,12 +64,11 @@ export function CameraView({
     getCameraPermission();
 
     return () => {
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
+      if (stream) {
         stream.getTracks().forEach(track => track.stop());
       }
     };
-  }, [onVideoReady]);
+  }, []); // Solo se ejecuta al montar
 
   if (hasCameraPermission === false) {
     return (
@@ -87,7 +97,6 @@ export function CameraView({
         playsInline
       />
       
-      {/* Overlay Checklist */}
       {showChecklist && (
         <div className="absolute top-6 left-4 right-4 flex justify-between gap-2 z-20">
           {[
@@ -110,7 +119,6 @@ export function CameraView({
         </div>
       )}
 
-      {/* Facial Guide Oval */}
       {showFacialGuide && (
         <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
           <div className={cn(
@@ -120,7 +128,6 @@ export function CameraView({
         </div>
       )}
 
-      {/* Darkened background outside oval (only if showing guide) */}
       {showFacialGuide && (
         <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_0_1000px_rgba(0,0,0,0.4)] z-0"></div>
       )}
