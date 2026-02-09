@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useRef, useEffect, useState } from 'react';
@@ -11,6 +10,7 @@ interface CameraViewProps {
   onVideoReady?: (videoElement: HTMLVideoElement) => void;
   className?: string;
   showChecklist?: boolean;
+  showFacialGuide?: boolean;
   isFaceDetected?: boolean;
   isFaceCentered?: boolean;
 }
@@ -19,6 +19,7 @@ export function CameraView({
   onVideoReady, 
   className, 
   showChecklist = true,
+  showFacialGuide = true,
   isFaceDetected = false,
   isFaceCentered = false
 }: CameraViewProps) {
@@ -110,15 +111,19 @@ export function CameraView({
       )}
 
       {/* Facial Guide Oval */}
-      <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
-        <div className={cn(
-          "facial-guide border-2 transition-all duration-300",
-          isFaceCentered ? "border-[#bbd300] shadow-[0_0_20px_rgba(187,211,0,0.3)]" : "border-white/30 border-dashed"
-        )}></div>
-      </div>
+      {showFacialGuide && (
+        <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-10">
+          <div className={cn(
+            "facial-guide border-2 transition-all duration-300",
+            isFaceCentered ? "border-[#bbd300] shadow-[0_0_20px_rgba(187,211,0,0.3)]" : "border-white/30 border-dashed"
+          )}></div>
+        </div>
+      )}
 
-      {/* Darkened background outside oval */}
-      <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_0_1000px_rgba(0,0,0,0.4)] z-0"></div>
+      {/* Darkened background outside oval (only if showing guide) */}
+      {showFacialGuide && (
+        <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_0_1000px_rgba(0,0,0,0.4)] z-0"></div>
+      )}
     </div>
   );
 }

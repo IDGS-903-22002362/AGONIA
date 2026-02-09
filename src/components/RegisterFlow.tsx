@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
@@ -280,7 +279,11 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
                 {!pdf417Result ? (
                   <>
                     <div className="relative aspect-video rounded-3xl overflow-hidden bg-black shadow-inner">
-                      <CameraView onVideoReady={handleVideoReady} showChecklist={false} />
+                      <CameraView 
+                        onVideoReady={handleVideoReady} 
+                        showChecklist={false} 
+                        showFacialGuide={false}
+                      />
                       <div className="absolute inset-0 border-2 border-[#bbd300]/30 border-dashed m-10 rounded-xl pointer-events-none"></div>
                       <div className="absolute bottom-4 left-0 right-0 text-center">
                         <span className="bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase">Buscando PDF417...</span>
@@ -359,6 +362,7 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
                       onVideoReady={handleVideoReady} 
                       isFaceDetected={faceCount === 1}
                       isFaceCentered={isFaceCentered}
+                      showFacialGuide={true}
                       className="h-full shadow-2xl"
                     />
                     
