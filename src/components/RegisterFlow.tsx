@@ -69,15 +69,24 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
       if (!loopsActiveRef.current) return;
 
       if (videoElementRef.current && videoElementRef.current.readyState === 4) {
+        // PASO 2: Escaneo de INE
         if (step === 2 && !pdf417Result && !isProcessing) {
-          const text = await decodePDF417FromVideo(videoElementRef.current);
-          if (text) {
-            const parsed = parseINEData(text);
-            setPdf417Result({ raw: text, parsed });
-            toast({ title: "Identificación Detectada", description: "Código leído correctamente." });
+          try {
+            const text = await decodePDF417FromVideo(videoElementRef.current);
+            if (text) {
+              const parsed = parseINEData(text);
+              setPdf417Result({ raw: text, parsed });
+              toast({ 
+                title: "Documento Detectado", 
+                description: `ID: ${parsed.cic || parsed.curp || 'Confirmado'}` 
+              });
+            }
+          } catch (e) {
+            // Error silencioso en el loop de escaneo
           }
         }
 
+        // PASO 3: Detección Facial
         if (step === 3 && !isProcessing) {
           try {
             const results = landmarker.detectForVideo(videoElementRef.current, performance.now());
@@ -92,7 +101,7 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
               setIsFaceCentered(false);
             }
           } catch (e) {
-            // Ignorar errores menores de detección
+            // Ignorar errores menores
           }
         }
       }
@@ -114,7 +123,7 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
     if (!videoElementRef.current || faceCount !== 1) return;
 
     setIsProcessing(true);
-    setScanProgress(10);
+    setScanProgress(15);
     
     try {
       const video = videoElementRef.current;
@@ -124,7 +133,7 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
         .withFaceDescriptor();
 
       if (!detection) {
-        throw new Error("No se detectó el rostro claramente. Intenta de nuevo.");
+        throw new Error("Detección incompleta. Mantén el rostro quieto y centrado.");
       }
 
       setScanProgress(100);
@@ -134,7 +143,7 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
       }, 500);
 
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: "Error Biométrico", description: error.message, variant: "destructive" });
       setIsProcessing(false);
       setScanProgress(0);
     }
@@ -145,21 +154,27 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
     if (!file) return;
 
     setIsProcessing(true);
+    setScanProgress(30);
+    
     const reader = new FileReader();
     reader.onload = async (event) => {
       const src = event.target?.result as string;
+      setScanProgress(60);
+      
       const text = await decodePDF417FromImage(src);
       if (text) {
         const parsed = parseINEData(text);
         setPdf417Result({ raw: text, parsed });
         setFormData(prev => ({ ...prev, idCardUrl: src }));
-        toast({ title: "INE Detectada", description: "Imagen procesada con éxito." });
+        toast({ title: "INE Validada", description: "Datos extraídos correctamente de la foto." });
+        setScanProgress(100);
       } else {
         toast({ 
-          title: "Código no detectado", 
-          description: "No se encontró un código QR o PDF417 válido. Asegúrate de que la imagen sea clara y del reverso.", 
+          title: "Lectura Fallida", 
+          description: "No se detectó el código QR/PDF417. Asegúrate de que la foto sea del reverso, esté bien iluminada y no esté borrosa.", 
           variant: "destructive" 
         });
+        setScanProgress(0);
       }
       setIsProcessing(false);
     };
@@ -197,7 +212,7 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
         {!isModelsReady ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center p-10 gap-4">
             <Loader2 className="h-12 w-12 animate-spin text-[#bbd300]" />
-            <p className="font-bold text-muted-foreground uppercase tracking-widest text-xs">Cargando Motores...</p>
+            <p className="font-bold text-muted-foreground uppercase tracking-widest text-xs">Sincronizando Sistemas...</p>
           </div>
         ) : (
           <>
@@ -229,7 +244,7 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
                 <div className="px-2">
                   <h2 className="text-xl font-bold">{step === 2 ? 'Valida tu Identidad' : 'Registro Facial'}</h2>
                   <p className="text-muted-foreground text-xs uppercase font-bold tracking-tight">
-                    {step === 2 ? 'Muestra el reverso de tu INE (QR o PDF417)' : 'Alinea tu rostro con el óvalo'}
+                    {step === 2 ? 'Muestra el reverso de tu INE (Códigos QR)' : 'Alinea tu rostro con el óvalo'}
                   </p>
                 </div>
 
@@ -240,6 +255,7 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
                     showFacialGuide={step === 3}
                     isFaceDetected={faceCount === 1}
                     isFaceCentered={isFaceCentered}
+                    initialFacingMode={step === 2 ? 'environment' : 'user'}
                     className="h-full"
                   />
 
@@ -247,8 +263,8 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
                     <div className="absolute inset-0 border-2 border-[#bbd300]/30 border-dashed m-10 rounded-3xl pointer-events-none flex flex-col items-center justify-center gap-2">
                       <div className="bg-black/60 p-4 rounded-2xl text-center">
                         <Scan className="h-8 w-8 text-[#bbd300] mx-auto mb-2 animate-pulse" />
-                        <Badge className="bg-[#bbd300] text-[#1e1e1e] uppercase text-[10px]">Escaneando Reverso...</Badge>
-                        <p className="text-[10px] text-white/70 mt-2">Compatible con códigos QR y PDF417</p>
+                        <Badge className="bg-[#bbd300] text-[#1e1e1e] uppercase text-[10px]">Buscando Códigos...</Badge>
+                        <p className="text-[10px] text-white/70 mt-2">Coloca el reverso de tu INE frente a la cámara</p>
                       </div>
                     </div>
                   )}
@@ -256,7 +272,7 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
                   {isProcessing && (
                     <div className="absolute inset-0 bg-black/80 z-50 flex flex-col items-center justify-center p-10 text-center text-white">
                       <Loader2 className="h-12 w-12 animate-spin text-[#bbd300] mb-4" />
-                      <p className="font-bold uppercase tracking-widest text-sm">Analizando biometría...</p>
+                      <p className="font-bold uppercase tracking-widest text-sm">Analizando datos...</p>
                       <Progress value={scanProgress} className="h-2 w-full mt-4" />
                     </div>
                   )}
@@ -281,27 +297,27 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
                     <div className="flex items-center gap-3 text-green-600">
                       <CheckCircle2 size={24} />
                       <div>
-                        <p className="font-bold text-sm">Identidad Detectada</p>
-                        <p className="text-[10px] uppercase text-muted-foreground">Datos extraídos del código</p>
+                        <p className="font-bold text-sm">Identidad Validada</p>
+                        <p className="text-[10px] uppercase text-muted-foreground">Datos extraídos del código QR</p>
                       </div>
                     </div>
                     <Button className="w-full h-12 rounded-xl bg-[#bbd300] text-[#1e1e1e] font-bold" onClick={() => setStep(3)}>
-                      Siguiente: Biometría Facial
+                      Siguiente: Registro Facial
                     </Button>
                   </div>
                 )}
                 
-                {step === 2 && !pdf417Result && (
+                {step === 2 && !pdf417Result && !isProcessing && (
                   <div className="text-center py-2 flex flex-col gap-2">
                     <div className="flex items-center gap-2 px-4 opacity-60">
                       <div className="h-px flex-1 bg-border"></div>
-                      <span className="text-[10px] font-bold uppercase">O sube una imagen</span>
+                      <span className="text-[10px] font-bold uppercase">O sube una foto clara</span>
                       <div className="h-px flex-1 bg-border"></div>
                     </div>
                     <Input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" id="file-upload" />
                     <Button variant="ghost" className="text-xs uppercase font-bold h-10" asChild>
                       <label htmlFor="file-upload" className="cursor-pointer">
-                        <History className="mr-2 h-4 w-4" /> Seleccionar Archivo del Reverso
+                        <History className="mr-2 h-4 w-4" /> Seleccionar del Carrete
                       </label>
                     </Button>
                   </div>
@@ -315,22 +331,22 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
                   <CheckCircle2 size={64} className="animate-in zoom-in duration-500" />
                 </div>
                 <div className="space-y-2">
-                  <h2 className="text-3xl font-bold tracking-tighter uppercase">¡Validado!</h2>
-                  <p className="text-muted-foreground text-sm px-6">Tu identidad y biometría han sido procesadas exitosamente.</p>
+                  <h2 className="text-3xl font-bold tracking-tighter uppercase">¡Verificado!</h2>
+                  <p className="text-muted-foreground text-sm px-6">Tu identidad ha sido procesada con éxito. Bienvenido al equipo.</p>
                 </div>
                 <div className="w-full bg-muted/30 p-4 rounded-2xl border border-dashed text-left space-y-1">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Resumen de Verificación</p>
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Resultados</p>
                   <div className="flex justify-between items-center">
-                    <span className="text-xs">Documento INE</span>
-                    <Badge variant="outline" className="text-green-600 bg-green-50 border-green-100">Escaneado</Badge>
+                    <span className="text-xs">INE (QR Detectado)</span>
+                    <Badge variant="outline" className="text-green-600 bg-green-50 border-green-100">OK</Badge>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-xs">Biometría Facial</span>
-                    <Badge variant="outline" className="text-green-600 bg-green-50 border-green-100">Validada</Badge>
+                    <span className="text-xs">Embedding Facial</span>
+                    <Badge variant="outline" className="text-green-600 bg-green-50 border-green-100">Generado</Badge>
                   </div>
                 </div>
                 <Button className="w-full h-16 rounded-2xl text-lg font-bold bg-[#bbd300] text-[#1e1e1e] shadow-xl shadow-[#bbd300]/20" onClick={handleFinalize}>
-                  Finalizar Registro
+                  Finalizar Inscripción
                 </Button>
               </div>
             )}
