@@ -16,7 +16,8 @@ import {
   Loader2,
   ChevronRight,
   History,
-  IdCard
+  IdCard,
+  AlertCircle
 } from 'lucide-react';
 import { Progress } from "@/components/ui/progress";
 import { CameraView } from '@/components/CameraView';
@@ -58,7 +59,6 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
     return () => { loopsActiveRef.current = false; };
   }, []);
 
-  // Loop unificado para evitar colisiones de hardware
   const startMainLoop = useCallback(async () => {
     if (loopsActiveRef.current) return;
     loopsActiveRef.current = true;
@@ -69,17 +69,15 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
       if (!loopsActiveRef.current) return;
 
       if (videoElementRef.current && videoElementRef.current.readyState === 4) {
-        // Solo escaneamos INE en el paso 2 y si no hay resultado
-        if (step === 2 && !pdf417Result) {
+        if (step === 2 && !pdf417Result && !isProcessing) {
           const text = await decodePDF417FromVideo(videoElementRef.current);
           if (text) {
             const parsed = parseINEData(text);
             setPdf417Result({ raw: text, parsed });
-            toast({ title: "INE Detectada", description: "Código leído correctamente." });
+            toast({ title: "Identificación Detectada", description: "Código leído correctamente." });
           }
         }
 
-        // Solo detectamos rostro en el paso 3
         if (step === 3 && !isProcessing) {
           try {
             const results = landmarker.detectForVideo(videoElementRef.current, performance.now());
@@ -94,7 +92,7 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
               setIsFaceCentered(false);
             }
           } catch (e) {
-            // Ignorar errores de detección momentáneos
+            // Ignorar errores menores de detección
           }
         }
       }
@@ -157,7 +155,11 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
         setFormData(prev => ({ ...prev, idCardUrl: src }));
         toast({ title: "INE Detectada", description: "Imagen procesada con éxito." });
       } else {
-        toast({ title: "Error", description: "No se encontró un código válido.", variant: "destructive" });
+        toast({ 
+          title: "Código no detectado", 
+          description: "No se encontró un código QR o PDF417 válido. Asegúrate de que la imagen sea clara y del reverso.", 
+          variant: "destructive" 
+        });
       }
       setIsProcessing(false);
     };
@@ -225,14 +227,13 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
             {(step === 2 || step === 3) && (
               <div className="flex-1 flex flex-col space-y-4">
                 <div className="px-2">
-                  <h2 className="text-xl font-bold">{step === 2 ? 'Escanea tu INE' : 'Registro Facial'}</h2>
+                  <h2 className="text-xl font-bold">{step === 2 ? 'Valida tu Identidad' : 'Registro Facial'}</h2>
                   <p className="text-muted-foreground text-xs uppercase font-bold tracking-tight">
-                    {step === 2 ? 'Muestra el reverso de tu identificación' : 'Alinea tu rostro con el óvalo'}
+                    {step === 2 ? 'Muestra el reverso de tu INE (QR o PDF417)' : 'Alinea tu rostro con el óvalo'}
                   </p>
                 </div>
 
                 <div className="relative flex-1 bg-black rounded-[2rem] overflow-hidden shadow-2xl">
-                  {/* Mantenemos la cámara montada para evitar el parpadeo en negro */}
                   <CameraView 
                     onVideoReady={handleVideoReady} 
                     showChecklist={step === 3}
@@ -243,15 +244,19 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
                   />
 
                   {step === 2 && !pdf417Result && (
-                    <div className="absolute inset-0 border-2 border-[#bbd300]/30 border-dashed m-10 rounded-3xl pointer-events-none flex items-center justify-center">
-                      <Badge className="bg-black/60 text-white uppercase text-[10px]">Buscando PDF417...</Badge>
+                    <div className="absolute inset-0 border-2 border-[#bbd300]/30 border-dashed m-10 rounded-3xl pointer-events-none flex flex-col items-center justify-center gap-2">
+                      <div className="bg-black/60 p-4 rounded-2xl text-center">
+                        <Scan className="h-8 w-8 text-[#bbd300] mx-auto mb-2 animate-pulse" />
+                        <Badge className="bg-[#bbd300] text-[#1e1e1e] uppercase text-[10px]">Escaneando Reverso...</Badge>
+                        <p className="text-[10px] text-white/70 mt-2">Compatible con códigos QR y PDF417</p>
+                      </div>
                     </div>
                   )}
 
                   {isProcessing && (
                     <div className="absolute inset-0 bg-black/80 z-50 flex flex-col items-center justify-center p-10 text-center text-white">
                       <Loader2 className="h-12 w-12 animate-spin text-[#bbd300] mb-4" />
-                      <p className="font-bold">Procesando Biometría...</p>
+                      <p className="font-bold uppercase tracking-widest text-sm">Analizando biometría...</p>
                       <Progress value={scanProgress} className="h-2 w-full mt-4" />
                     </div>
                   )}
@@ -272,22 +277,32 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
                 </div>
 
                 {step === 2 && pdf417Result && (
-                  <div className="bg-white p-4 rounded-2xl border space-y-4 animate-in zoom-in-95">
+                  <div className="bg-white p-4 rounded-2xl border border-green-100 space-y-4 animate-in zoom-in-95">
                     <div className="flex items-center gap-3 text-green-600">
                       <CheckCircle2 size={24} />
-                      <p className="font-bold text-sm">Identificación Validada</p>
+                      <div>
+                        <p className="font-bold text-sm">Identidad Detectada</p>
+                        <p className="text-[10px] uppercase text-muted-foreground">Datos extraídos del código</p>
+                      </div>
                     </div>
                     <Button className="w-full h-12 rounded-xl bg-[#bbd300] text-[#1e1e1e] font-bold" onClick={() => setStep(3)}>
-                      Continuar a Biometría
+                      Siguiente: Biometría Facial
                     </Button>
                   </div>
                 )}
                 
                 {step === 2 && !pdf417Result && (
-                  <div className="text-center py-2">
+                  <div className="text-center py-2 flex flex-col gap-2">
+                    <div className="flex items-center gap-2 px-4 opacity-60">
+                      <div className="h-px flex-1 bg-border"></div>
+                      <span className="text-[10px] font-bold uppercase">O sube una imagen</span>
+                      <div className="h-px flex-1 bg-border"></div>
+                    </div>
                     <Input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" id="file-upload" />
-                    <Button variant="ghost" className="text-xs uppercase font-bold" asChild>
-                      <label htmlFor="file-upload" className="cursor-pointer">Subir foto del reverso</label>
+                    <Button variant="ghost" className="text-xs uppercase font-bold h-10" asChild>
+                      <label htmlFor="file-upload" className="cursor-pointer">
+                        <History className="mr-2 h-4 w-4" /> Seleccionar Archivo del Reverso
+                      </label>
                     </Button>
                   </div>
                 )}
@@ -299,11 +314,22 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
                 <div className="h-24 w-24 bg-[#bbd300]/20 text-[#bbd300] rounded-full flex items-center justify-center">
                   <CheckCircle2 size={64} className="animate-in zoom-in duration-500" />
                 </div>
-                <div>
-                  <h2 className="text-3xl font-bold tracking-tighter">¡IDENTIDAD VALIDADA!</h2>
-                  <p className="text-muted-foreground text-sm mt-2 px-6">Tu biometría y documentos han sido procesados correctamente.</p>
+                <div className="space-y-2">
+                  <h2 className="text-3xl font-bold tracking-tighter uppercase">¡Validado!</h2>
+                  <p className="text-muted-foreground text-sm px-6">Tu identidad y biometría han sido procesadas exitosamente.</p>
                 </div>
-                <Button className="w-full h-16 rounded-2xl text-lg font-bold bg-[#bbd300] text-[#1e1e1e]" onClick={handleFinalize}>
+                <div className="w-full bg-muted/30 p-4 rounded-2xl border border-dashed text-left space-y-1">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase">Resumen de Verificación</p>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs">Documento INE</span>
+                    <Badge variant="outline" className="text-green-600 bg-green-50 border-green-100">Escaneado</Badge>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs">Biometría Facial</span>
+                    <Badge variant="outline" className="text-green-600 bg-green-50 border-green-100">Validada</Badge>
+                  </div>
+                </div>
+                <Button className="w-full h-16 rounded-2xl text-lg font-bold bg-[#bbd300] text-[#1e1e1e] shadow-xl shadow-[#bbd300]/20" onClick={handleFinalize}>
                   Finalizar Registro
                 </Button>
               </div>
