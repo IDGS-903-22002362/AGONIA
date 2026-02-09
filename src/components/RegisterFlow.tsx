@@ -26,6 +26,7 @@ import { descriptorToArray } from '@/lib/embeddings-utils';
 import { useFirestore } from '@/firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from "@/lib/utils";
 
 export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
   const { registerUser } = useDemoState();
@@ -72,16 +73,15 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
           const results = landmarker.detectForVideo(videoElementRef.current, performance.now());
           setFaceCount(results.faceLandmarks.length);
           
-          // Lógica simple de centrado: verificar si el primer landmark del primer rostro está cerca del centro
           if (results.faceLandmarks.length === 1) {
-            const landmark = results.faceLandmarks[0][0]; // Punto en la frente/nariz
+            const landmark = results.faceLandmarks[0][0];
             const isCentered = landmark.x > 0.35 && landmark.x < 0.65 && landmark.y > 0.3 && landmark.y < 0.7;
             setIsFaceCentered(isCentered);
           } else {
             setIsFaceCentered(false);
           }
         } catch (e) {
-          // Ignorar errores de detección momentáneos
+          // Detectión error ignored
         }
       }
       if (step === 3) requestAnimationFrame(runDetection);
@@ -111,8 +111,6 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
         throw new Error("No se pudo extraer el descriptor del rostro. Asegúrate de estar bien iluminado.");
       }
 
-      // En un flujo real, guardaríamos el embedding asociado al email/uid que se creará
-      // Aquí lo preparamos para el paso final del registerUser
       setScanProgress(100);
       
       setTimeout(() => {
@@ -146,7 +144,6 @@ export default function RegisterFlow({ onCancel }: { onCancel: () => void }) {
 
   return (
     <div className="flex flex-col h-full bg-background overflow-y-auto">
-      {/* Header */}
       <div className="p-4 flex items-center border-b bg-white sticky top-0 z-50">
         <Button variant="ghost" size="icon" onClick={step === 1 ? onCancel : () => setStep(step - 1)}>
           <ChevronLeft />
