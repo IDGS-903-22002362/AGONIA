@@ -24,6 +24,11 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
+    // --- Validación INE (SOLO PROTOTIPO - NO PRODUCCIÓN) ---
+    match /ine_verifications/{verificationId} {
+      allow read, write: if isSignedIn();
+    }
+
     // --- Collection Rules ---
 
     match /users/{userId} {
@@ -57,8 +62,7 @@ service cloud.firestore {
     }
 
     match /roles_staff/{userId} {
-      allow get: if isSignedIn();
-      allow list: if isSignedIn();
+      allow get, list: if isSignedIn();
       allow create: if isOwner(userId);
       allow update, delete: if false;
     }

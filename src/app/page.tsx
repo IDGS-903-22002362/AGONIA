@@ -1,13 +1,15 @@
+
 "use client";
 
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useDemoState } from '@/hooks/use-demo-state';
-import { User, ShieldCheck, Dumbbell, Loader2 } from 'lucide-react';
+import { User, ShieldCheck, Dumbbell, Loader2, IdCard } from 'lucide-react';
 import UserDashboard from '@/components/UserDashboard';
 import StaffDashboard from '@/components/StaffDashboard';
 import RegisterFlow from '@/components/RegisterFlow';
+import Link from 'next/link';
 
 export default function Home() {
   const { role, currentUser, isLoading, loginAsUser, loginAsStaff, logout } = useDemoState();
@@ -45,9 +47,9 @@ export default function Home() {
       </div>
 
       <Card className="w-full max-w-sm border-none shadow-none bg-transparent">
-        <CardContent className="grid gap-4 p-0">
+        <CardContent className="grid gap-3 p-0">
           <Button 
-            className="h-16 text-lg justify-start px-6 rounded-2xl shadow-md bg-[#bbd300] text-[#1e1e1e] hover:bg-[#a8bd00]" 
+            className="h-14 text-md justify-start px-6 rounded-2xl shadow-md bg-[#bbd300] text-[#1e1e1e] hover:bg-[#a8bd00]" 
             onClick={() => setShowRegister(true)}
           >
             <User className="mr-4 h-6 w-6" />
@@ -56,7 +58,7 @@ export default function Home() {
 
           <Button 
             variant="outline"
-            className="h-16 text-lg justify-start px-6 rounded-2xl shadow-md bg-white border-[#1e1e1e] text-[#1e1e1e] hover:bg-gray-50" 
+            className="h-14 text-md justify-start px-6 rounded-2xl shadow-md bg-white border-[#1e1e1e] text-[#1e1e1e] hover:bg-gray-50" 
             onClick={() => loginAsUser('demo@example.com')}
           >
             <User className="mr-4 h-6 w-6" />
@@ -64,8 +66,19 @@ export default function Home() {
           </Button>
 
           <Button 
+            asChild
             variant="outline"
-            className="h-16 text-lg justify-start px-6 rounded-2xl shadow-md bg-[#1e1e1e] text-white border-transparent hover:bg-black" 
+            className="h-14 text-md justify-start px-6 rounded-2xl shadow-md bg-[#1e1e1e] text-white border-transparent hover:bg-black"
+          >
+            <Link href="/ine">
+              <IdCard className="mr-4 h-6 w-6 text-[#bbd300]" />
+              Validación INE
+            </Link>
+          </Button>
+
+          <Button 
+            variant="outline"
+            className="h-14 text-md justify-start px-6 rounded-2xl shadow-md bg-[#1e1e1e] text-white border-transparent hover:bg-black" 
             onClick={() => loginAsStaff()}
           >
             <ShieldCheck className="mr-4 h-6 w-6 text-[#bbd300]" />
