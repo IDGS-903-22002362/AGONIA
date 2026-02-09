@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as faceapi from 'face-api.js';
@@ -12,12 +11,16 @@ let landmarker: FaceLandmarker | null = null;
 let modelsLoaded = false;
 
 /**
- * Carga los modelos de face-api.js desde /models.
+ * Carga los modelos de face-api.js.
+ * Intenta cargar desde /models localmente, y si falla (como el 404 detectado), 
+ * utiliza el CDN oficial como respaldo para el prototipo.
  */
 export async function loadFaceApiModels() {
   if (modelsLoaded) return;
   
-  const MODEL_URL = '/models';
+  // Usamos el CDN oficial de face-api.js para asegurar que el prototipo funcione sin archivos locales.
+  const MODEL_URL = 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights';
+  
   try {
     await Promise.all([
       faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
@@ -25,11 +28,21 @@ export async function loadFaceApiModels() {
       faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
     ]);
     modelsLoaded = true;
-    console.log('Face-api.js models loaded');
+    console.log('Face-api.js models loaded from CDN');
   } catch (error) {
     console.error('Error loading face-api models:', error);
-    // Intentar desde CDN si local falla (solo para robustez del prototipo)
-    // await faceapi.nets.ssdMobilenetv1.loadFromUri('https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights');
+    // Reintento local por si acaso el CDN falla pero los archivos locales sí existen
+    try {
+      await Promise.all([
+        faceapi.nets.ssdMobilenetv1.loadFromUri('/models'),
+        faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
+        faceapi.nets.faceRecognitionNet.loadFromUri('/models'),
+      ]);
+      modelsLoaded = true;
+      console.log('Face-api.js models loaded from local /models');
+    } catch (localError) {
+      console.error('Final fallback: Error loading models locally:', localError);
+    }
   }
 }
 
